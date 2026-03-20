@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs — Caduceus</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9B%8F</text></svg>">
+    <style>
+        .docs-layout { display: flex; max-width: 1100px; margin: 0 auto; padding: 48px 24px; gap: 48px; }
+        .docs-sidebar { width: 200px; flex-shrink: 0; }
+        .docs-content { flex: 1; max-width: 680px; }
+        .docs-nav-title { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+        .docs-nav { display: flex; flex-direction: column; gap: 4px; }
+        .docs-nav a { font-size: 14px; color: var(--text-muted); padding: 4px 0; }
+        .docs-nav a:hover, .docs-nav a.active { color: var(--text); }
+        .docs-content h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
+        .docs-content p { font-size: 15px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+        .doc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+        .doc-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; }
+        .doc-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+        .doc-card h3 a { color: var(--text); }
+        .doc-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 0; }
+        .docs-divider { height: 1px; background: var(--border); margin: 48px 0; }
+        @media (max-width: 768px) { .docs-layout { flex-direction: column; } .docs-sidebar { width: 100%; } .doc-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <p class="docs-nav-title">Documentation</p>
+            <nav class="docs-nav">
+                <a href="/docs/getting-started">Getting Started</a>
+                <a href="/docs/skills">Skills</a>
+                <a href="/docs/architecture">Architecture</a>
+                <a href="/docs/faq">FAQ</a>
+            </nav>
+        </aside>
+
+        <div class="docs-content">
+            <h1>Documentation</h1>
+            <p>Everything you need to install, configure, and use Caduceus.</p>
+
+            <div class="doc-grid">
+                <div class="doc-card">
+                    <h3><a href="/docs/getting-started">Getting Started →</a></h3>
+                    <p>Install Caduceus in under 5 minutes. Load the orchestrator. Run your first task.</p>
+                </div>
+                <div class="doc-card">
+                    <h3><a href="/docs/skills">Skills →</a></h3>
+                    <p>Reference for all 7 agent skills. What each does, what tools it uses, how to prompt it.</p>
+                </div>
+                <div class="doc-card">
+                    <h3><a href="/docs/architecture">Architecture →</a></h3>
+                    <p>How it all fits together: SQLite, QMD, the orchestrator, coordination protocol.</p>
+                </div>
+                <div class="doc-card">
+                    <h3><a href="/docs/faq">FAQ →</a></h3>
+                    <p>Common questions about Caduceus, Hermes, pricing, and getting help.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/docs">Docs</a>
+            <a href="/docs/getting-started">Getting Started</a>
+            <a href="/docs/skills">Skills</a>
+            <a href="/docs/architecture">Architecture</a>
+            <a href="/pricing">Pricing</a>
+        </div>
+        <p class="footer-copy">Caduceus &copy; 2026 Studio Yeehaw LLC</p>
+    </footer>
+</body>
+</html>

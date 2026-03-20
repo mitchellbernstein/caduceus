@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skills — Caduceus</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9B%8F</text></svg>">
+    <style>
+        .docs-layout { display: flex; max-width: 1100px; margin: 0 auto; padding: 48px 24px; gap: 48px; }
+        .docs-sidebar { width: 200px; flex-shrink: 0; }
+        .docs-content { flex: 1; max-width: 680px; }
+        .docs-nav-title { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+        .docs-nav { display: flex; flex-direction: column; gap: 4px; }
+        .docs-nav a { font-size: 14px; color: var(--text-muted); padding: 4px 0; }
+        .docs-nav a:hover, .docs-nav a.active { color: var(--text); }
+        .docs-content h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
+        .docs-content h2 { font-size: 20px; font-weight: 600; margin-top: 48px; margin-bottom: 16px; }
+        .docs-content h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 10px; }
+        .docs-content p { font-size: 15px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+        .docs-content ul { margin-bottom: 16px; padding-left: 20px; }
+        .docs-content li { font-size: 15px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.6; }
+        .docs-content code { font-family: var(--font-mono); font-size: 13px; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
+        .docs-content pre { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; overflow-x: auto; }
+        .docs-content pre code { background: none; padding: 0; font-size: 13px; line-height: 1.7; }
+        .docs-divider { height: 1px; background: var(--border); margin: 48px 0; }
+        .skill-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+        .skill-card h3 { margin-top: 0; font-family: var(--font-mono); font-size: 14px; color: var(--text); }
+        .skill-card p { margin-bottom: 0; font-size: 14px; }
+        .skill-card code { font-size: 12px; }
+        .skill-meta { display: flex; gap: 12px; margin-bottom: 12px; }
+        .skill-badge { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); border: 1px solid var(--border-subtle); padding: 2px 6px; border-radius: 4px; }
+        @media (max-width: 768px) { .docs-layout { flex-direction: column; } .docs-sidebar { width: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <p class="docs-nav-title">Documentation</p>
+            <nav class="docs-nav">
+                <a href="/docs/getting-started">Getting Started</a>
+                <a href="/docs/skills" class="active">Skills</a>
+                <a href="/docs/architecture">Architecture</a>
+                <a href="/docs/faq">FAQ</a>
+            </nav>
+        </aside>
+
+        <div class="docs-content">
+            <h1>Skills</h1>
+            <p>Caduceus is a collection of Hermes skills. Each skill is a specialized agent with a defined role, tools, and coordination protocol.</p>
+
+            <div class="docs-divider"></div>
+
+            <h2>Core skills</h2>
+
+            <div class="skill-card">
+                <h3>caduceus-orchestrator</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">core</span>
+                    <span class="skill-badge">spawns other agents</span>
+                </div>
+                <p>The foreman. Receives work from the user, creates tasks, spawns the right sub-agents, monitors progress via QMD, handles retries and approvals. You talk to the orchestrator — it talks to the rest.</p>
+                <p><strong>Use it:</strong> <code>"run the researcher on competitor analysis"</code></p>
+            </div>
+
+            <div class="skill-card">
+                <h3>caduceus-themis</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">onboard</span>
+                    <span class="skill-badge">project setup</span>
+                </div>
+                <p>Runs a GSD-style structured interview to bootstrap a new project. Asks 6 questions, then creates SPEC.md, context.md, and initial tasks in SQLite. One conversation to get a project ready for agents.</p>
+                <p><strong>Use it:</strong> <code>"bootstrap a new project with Themis"</code></p>
+            </div>
+
+            <div class="docs-divider"></div>
+
+            <h2>Theoi — agent skills</h2>
+
+            <div class="skill-card">
+                <h3>caduceus-engineer</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">builder</span>
+                    <span class="skill-badge">writes code</span>
+                </div>
+                <p>Builds features, fixes bugs, writes tests, opens PRs. Reads SPEC.md, implements, tests, updates the coordination log. Requires approval for destructive actions (delete, drop, auth changes).</p>
+                <p><strong>Tools:</strong> terminal, read_file, write_file, search_files, git</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>caduceus-researcher</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">analyst</span>
+                    <span class="skill-badge">reads the web</span>
+                </div>
+                <p>Deep research, competitive analysis, paper review. Searches broadly, synthesizes findings, writes reports to QMD. Multiple sources, dated information, distinguishes fact from opinion.</p>
+                <p><strong>Tools:</strong> web_search, web_extract, arxiv, session_search</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>caduceus-writer</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">copy</span>
+                    <span class="skill-badge">content</span>
+                </div>
+                <p>Landing page copy, documentation, emails, reports. Markdown-first. Templates for each content type. Optionally sends to Notion or Resend.</p>
+                <p><strong>Tools:</strong> write_file, read_file, web_extract</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>caduceus-monitor</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">watcher</span>
+                    <span class="skill-badge">heartbeat</span>
+                </div>
+                <p>Periodic health checks every 30 minutes. Alerts on stalled tasks, failed jobs, pending approvals, urgent email. Writes status to QMD state file. Silent if nothing needs attention.</p>
+                <p><strong>Tools:</strong> terminal, session_search, read_file, write_file, cronjob</p>
+            </div>
+
+            <div class="skill-card">
+                <h3>caduceus-kairos</h3>
+                <div class="skill-meta">
+                    <span class="skill-badge">experiment</span>
+                    <span class="skill-badge">bounded loops</span>
+                </div>
+                <p>Runs autonomous experiments with hard iteration caps. Define a hypothesis, run N iterations with metric tracking, decide when to stop (early success or exhaust budget), log learnings to Agora.</p>
+                <p><strong>Tools:</strong> web_search, web_extract, terminal, delegate_task, read_file, write_file</p>
+            </div>
+
+            <div class="docs-divider"></div>
+
+            <h2>How agents coordinate</h2>
+            <p>Agents don't message each other directly. They write to QMD:</p>
+            <pre><code>## 2026-03-19
+
+- [engineer] Completed: build landing page → Output: projects/ugc/landing.md
+- [researcher] Started: competitor analysis
+- [writer] Blocked: waiting on engineer (needs structure)</code></pre>
+            <p>Other agents read the coordination log to see what's happening. No message bus, no direct communication — just a shared brain in QMD.</p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/docs">Docs</a>
+            <a href="/docs/getting-started">Getting Started</a>
+            <a href="/docs/skills">Skills</a>
+            <a href="/docs/architecture">Architecture</a>
+            <a href="/pricing">Pricing</a>
+        </div>
+        <p class="footer-copy">Caduceus &copy; 2026 Studio Yeehaw LLC</p>
+    </footer>
+</body>
+</html>
