@@ -15,11 +15,17 @@
 #   ~/.hermes/caduceus-ui/      — Next.js app + FastAPI proxy
 # =============================================================================
 
-set -euo pipefail
+# Detect the source directory (where this script lives)
+# Use ${BASH_SOURCE[0]-} syntax — empty string if unbound (works under set -u)
+_bs="${BASH_SOURCE[0]-}"
+if [[ -n "$_bs" ]] && [[ -d "$(dirname "$_bs")" ]]; then
+    SOURCE_DIR="$(cd "$(dirname "$_bs")" && pwd)"
+else
+    SOURCE_DIR="$(pwd)"
+fi
+unset _bs
 
-# =============================================================================
-# Constants
-# =============================================================================
+set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 CADUCEUS_SKILLS_DIR="$HERMES_HOME/skills"
@@ -47,7 +53,12 @@ error()   { echo -e "${RED}[error]${RESET} $1" >&2; }
 section() { echo ""; echo -e "${BOLD}${1}${RESET}"; echo "========================================"; }
 
 # Detect the source directory (where this script lives)
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${BASH_SOURCE[0]:-}"
+if [[ -n "$SOURCE_DIR" ]] && [[ -d "$(dirname "$SOURCE_DIR")" ]]; then
+    SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SOURCE_DIR="$(pwd)"
+fi
 
 # =============================================================================
 # Parse flags
