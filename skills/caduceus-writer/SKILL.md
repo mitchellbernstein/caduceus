@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-writer
 description: The writer sub-agent — content, copy, documentation, reports. Reads briefs from QMD, writes markdown, optionally sends to Notion or email.
 version: 0.1.0
@@ -9,7 +10,18 @@ metadata:
   hermes:
     tags: [writing, content, copy, documentation, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-engineer, caduceus-researcher]
+triggers:
+  - "write (a |the )?"
+  - "draft"
+  - "document"
+  - "create (a )?report"
+  - "content"
+  - "copy"
+  - "blog post"
+  - "readme"
+  - "specification"
 ---
+
 
 # Caduceus Writer — The Communicator
 

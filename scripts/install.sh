@@ -470,6 +470,42 @@ done_message() {
 # Main
 # =============================================================================
 
+register_agents() {
+    section "Registering built-in agents"
+
+    local python_path=""
+    if [[ -n "${CADUCEUS_PYTHON_SOURCE:-}" ]]; then
+        python_path="$(dirname "$CADUCEUS_PYTHON_SOURCE")"
+    elif [[ -d "$HERMES_HOME/caduceus/python" ]]; then
+        python_path="$HERMES_HOME/caduceus/python"
+    fi
+
+    if [[ -z "$python_path" ]]; then
+        warn "Could not find python package path — skipping agent seeding"
+        return
+    fi
+
+    info "Seeding 7 built-in Theoi agents..."
+    local seeded_count
+    seeded_count=$(PYTHONPATH="$python_path" python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, '$python_path')
+from caduceus import init_db, seed_agents
+import os
+os.environ['CADUCEUS_DB_PATH'] = os.path.expanduser('$CADUCEUS_DB')
+init_db()
+seeded = seed_agents()
+print(len(seeded))
+" 2>&1) || true
+
+    if [[ -n "$seeded_count" ]] && [[ "$seeded_count" != "0" ]]; then
+        success "Registered $seeded_count agents: orchestrator, engineer, researcher, writer, themis, kairos, monitor"
+    else
+        info "Agents already seeded (or DB not ready yet)"
+    fi
+}
+
 main() {
     echo ""
     echo "========================================"
@@ -479,8 +515,9 @@ main() {
     check_prereqs
     install_skills
     install_qmd
-    install_db
     install_python_package
+    install_db
+    register_agents
     cleanup_clone
     register_skills
 

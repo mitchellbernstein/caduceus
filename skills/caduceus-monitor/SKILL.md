@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-monitor
 description: The monitor sub-agent — periodic health checks, notifications, system monitoring. Checks email, calendar, notifications, alerts if urgent.
 version: 0.1.0
@@ -9,7 +10,18 @@ metadata:
   hermes:
     tags: [monitoring, health-check, notifications, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-themis, caduceus-kairos]
+triggers:
+  - "check (up )?on"
+  - "monitor"
+  - "health"
+  - "status"
+  - "heartbeat"
+  - "alert"
+  - "notify"
+  - "watch"
+  - "periodic"
 ---
+
 
 # Caduceus Monitor — The Watcher
 

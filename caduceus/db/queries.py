@@ -819,3 +819,43 @@ def get_stats() -> dict:
                 "failed": failed_executions,
             },
         }
+
+
+# =============================================================================
+# AGENT SEEDING — register the 7 built-in Caduceus agents
+# =============================================================================
+
+THEOI_AGENTS = [
+    {"name": "orchestrator-1", "role": "orchestrator",  "skill_name": "caduceus-orchestrator"},
+    {"name": "engineer-1",     "role": "engineer",      "skill_name": "caduceus-engineer"},
+    {"name": "researcher-1",   "role": "researcher",    "skill_name": "caduceus-researcher"},
+    {"name": "writer-1",       "role": "writer",        "skill_name": "caduceus-writer"},
+    {"name": "themis-1",       "role": "themis",        "skill_name": "caduceus-themis"},
+    {"name": "kairos-1",       "role": "kairos",        "skill_name": "caduceus-kairos"},
+    {"name": "monitor-1",      "role": "monitor",       "skill_name": "caduceus-monitor"},
+]
+
+def seed_agents(db_path: Path | None = None) -> list[dict]:
+    """Register the 7 built-in Theoi agents. Idempotent — skips if already registered."""
+    if db_path is None:
+        db_path = get_db_path()
+    seeded = []
+    with get_db(write=True) as conn:
+        for agent in THEOI_AGENTS:
+            existing = conn.execute(
+                "SELECT id FROM agents WHERE name = ?", (agent["name"],)
+            ).fetchone()
+            if existing:
+                continue  # already registered
+            agent_id = _uid("agent-")
+            now = int(time.time())
+            conn.execute(
+                """
+                INSERT INTO agents (id, name, role, skill_name, config, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'idle', ?)
+                """,
+                (agent_id, agent["name"], agent["role"], agent["skill_name"],
+                 _json({"description": f"Built-in {agent['role']} agent"}), now),
+            )
+            seeded.append(agent["name"])
+    return seeded

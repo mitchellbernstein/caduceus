@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-kairos
 description: The kairos sub-agent — bounded autonomous experimentation loops. Defines hypotheses, runs iterations, tracks metrics, decides when to stop.
 version: 0.1.0
@@ -9,7 +10,17 @@ metadata:
   hermes:
     tags: [autoresearch, experimentation, bounded-loops, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-researcher]
+triggers:
+  - "experiment"
+  - "iterate"
+  - "autonomous"
+  - "research loop"
+  - "hypothesis"
+  - "run (an |the )?experiment"
+  - "try (a |the )?approach"
+  - "test (a |the )?idea"
 ---
+
 
 # Caduceus Kairos — The Experimenter
 
