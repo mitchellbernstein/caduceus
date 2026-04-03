@@ -172,15 +172,17 @@ was tested and what needs deeper verification.
 
 For each iteration:
 
-1. **Read the verification spec** — what must be true for this to pass?
-2. **Execute the change**
-3. **Measure the metric**
-4. **Compare to baseline**
-5. **Log the result** to the iteration log
-6. **Update verification-log.json** with what was tested and what needs deeper verification
-7. **Update progress.json** with current iteration count
-8. **Git commit** your state
-9. **Output the promise tag**
+1. **Read prior traces** from `traces/iteration-<N>.json` — diagnose failure patterns before starting
+2. **Read the verification spec** — what must be true for this to pass?
+3. **Execute the change**
+4. **Measure the metric**
+5. **Compare to baseline**
+6. **Emit structured trace** (see Trace Format below) — captures steps, reasoning, failure analysis
+7. **Log the result** to the iteration log
+8. **Update verification-log.json** with what was tested and what needs deeper verification
+9. **Update progress.json** with current iteration count
+10. **Git commit** your state
+11. **Output the promise tag**
 
 ```markdown
 ## Iteration 1 — YYYY-MM-DD HH:MM
@@ -302,6 +304,97 @@ When concluding, write learnings to Agora:
 ### Evidence
 - <Supporting data>
 ```
+
+## Structured Traces (AutoAgent ATIF-Inspired)
+
+Inspired by AutoAgent's ATIF format. Every iteration MUST emit a structured trace.
+
+**Why traces?** AutoAgent found that when they only gave scores without trajectories,
+improvement rate dropped hard. Understanding WHY something improved matters as much
+as knowing it improved. Kairos traces capture the same thing: step-by-step reasoning,
+not just pass/fail.
+
+### Trace Document Location
+`~/.hermes/caduceus/projects/<project>/experiments/<experiment-id>/traces/iteration-<N>.json`
+
+### Trace Schema
+
+```json
+{
+  "schema_version": "kairos-trace-v1",
+  "experiment_id": "<id>",
+  "iteration": 1,
+  "timestamp": "ISO-8601",
+  "hypothesis": "<what we tested>",
+  "verification_spec": ["<criterion 1>", "<criterion 2>"],
+  "steps": [
+    {
+      "step_id": 1,
+      "source": "agent|tool|environment",
+      "message": "<what happened>",
+      "reasoning_content": "<internal reasoning>",
+      "tool_calls": [{"tool": "name", "arguments": {...}}],
+      "observation": "<result>"
+    }
+  ],
+  "final_metrics": {
+    "metric_value": 0, "baseline": 0, "delta": 0, "delta_pct": 0
+  },
+  "verification_result": {
+    "status": "pass|fail|partial",
+    "criteria_met": [],
+    "criteria_failed": []
+  },
+  "failure_analysis": {
+    "root_cause": "<primary reason>",
+    "pattern": "misunderstanding|missing_capability|weak_gathering|bad_strategy|missing_verification|environment_issue|silent_failure"
+  },
+  "next_iteration_recommendation": {
+    "change": "<specific change to try>",
+    "why": "<reasoning>",
+    "expected_impact": "<what should improve>"
+  }
+}
+```
+
+### Failure Pattern Reference
+
+| Pattern | Description |
+|---------|-------------|
+| `misunderstanding` | Agent misunderstood hypothesis or criteria |
+| `missing_capability` | Lacked tool or knowledge to execute |
+| `weak_gathering` | Not enough data before deciding |
+| `bad_strategy` | Right data, wrong approach |
+| `missing_verification` | Didn't check result before committing |
+| `environment_issue` | External factor (network, tool failure) |
+| `silent_failure` | Agent thought it succeeded but output was wrong |
+
+### Diagnose from Prior Traces
+
+Before starting a new iteration, read all prior traces to find failure patterns:
+
+```bash
+# Read traces
+cat traces/iteration-1.json
+cat traces/iteration-2.json
+
+# Group by failure pattern
+# Then target the most common pattern in next iteration
+```
+
+## DIRECTIVE.md Integration
+
+Before running any Kairos experiment, check for a project DIRECTIVE.md:
+
+`~/.hermes/caduceus/projects/<project>/DIRECTIVE.md`
+
+If it exists, read it and honor:
+- What Kairos CAN and CANNOT experiment with
+- Success criteria and baseline metrics
+- Never-stop rules vs things requiring explicit restart
+
+This is the AutoAgent `program.md` pattern — Mitchell writes the constraints,
+Kairos operates within them autonomously.
 
 ## Git Backup After Each Iteration
 

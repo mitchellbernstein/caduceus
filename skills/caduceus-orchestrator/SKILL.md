@@ -87,6 +87,40 @@ User → "run the researcher on the UGC project"
 | researcher | caduceus-researcher | Competitive space research — find top products, inspect them, produce insight doc |
 | cloner | caduceus-cloner | Autonomous SaaS cloning — URL → PRD → implemented clone + QA |
 
+## Caduceus Governance
+
+### SIMPLICITY.md
+
+Before adding any new skill, agent type, or architectural layer to Caduceus,
+apply the **Simplicity Criterion** (inspired by AutoAgent):
+
+> "If this exact use case disappeared, would this still be worth it?"
+
+**Framework Addition Checklist:**
+- [ ] Does this solve a real, observed failure?
+- [ ] What's the minimum version that solves it?
+- [ ] Does this require a new agent type, or can existing agents handle it?
+- [ ] What existing skill or pattern does this compete with?
+- [ ] If this disappeared, would Caduceus still work?
+
+See `~/.hermes/caduceus/SIMPLICITY.md` for the full criterion.
+
+### DIRECTIVE.md Pattern (AutoAgent program.md)
+
+For each project, Mitchell writes a `DIRECTIVE.md` at:
+`~/.hermes/caduceus/projects/<project>/DIRECTIVE.md`
+
+This is the AutoAgent `program.md` equivalent — the contract between Mitchell
+and the orchestrator/Kairos:
+
+- What sub-agents are authorized to do without asking
+- What requires explicit approval (draft-and-flag)
+- Success criteria with baseline metrics
+- Experiment boundaries (what Kairos can/cannot try)
+- Never-stop rules
+
+Before spawning any sub-agent, the orchestrator reads the project's DIRECTIVE.md.
+
 ## Caduceus Cloner (Ralph-to-Ralph Workflow)
 
 `caduceus-cloner` is a three-phase autonomous pipeline (Inspect → Build → QA) inspired by
