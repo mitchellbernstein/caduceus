@@ -181,8 +181,11 @@ def _load_json(path: Path) -> dict:
     return {}
 
 def _save_json(path: Path, data: dict):
+    """Write JSON atomically using a temp file + rename to avoid corruption on concurrent writes."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2))
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2))
+    tmp.rename(path)  # Atomic on POSIX
 
 
 class MissionStore:
@@ -337,12 +340,18 @@ class MissionStore:
         return task
 
     def update_task(self, mission_id: str, task_id: str, **kwargs) -> Optional[Task]:
-        """Update task fields."""
+        """Update task fields. Handles enum conversion for status field."""
         task = self.get_task(mission_id, task_id)
         if not task:
             return None
         for key, value in kwargs.items():
             if hasattr(task, key) and value is not None:
+                # Convert status string to TaskStatus enum
+                if key == "status" and isinstance(value, str):
+                    try:
+                        value = TaskStatus(value)
+                    except ValueError:
+                        continue  # Skip invalid status
                 setattr(task, key, value)
         self.save_task(mission_id, task)
         return task
@@ -505,9 +514,11 @@ class MissionStore:
         for m in self.list():
             for t in self.get_tasks(m.id):
                 task_dict = asdict(t)
+                # Remove the Task dataclass's default empty chat_history — we'll load the real one below
+                task_dict.pop("chat_history", None)
                 task_dict["mission_name"] = m.name
                 task_dict["mission_id"] = m.id
-                # Attach chat history
+                # Attach chat history from the separate chat store
                 task_dict["chat_history"] = self.get_chat(m.id, t.id)
                 all_tasks.append(task_dict)
         return sorted(all_tasks, key=lambda x: x.get("created_at", ""), reverse=True)

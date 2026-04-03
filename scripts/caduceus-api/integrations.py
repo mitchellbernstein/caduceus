@@ -26,7 +26,7 @@ try:
 except ImportError:
     FERNET_AVAILABLE = False
 
-from caduceus_api.models import IntegrationKey, MISSIONS_DIR
+from caduceus_api.models import IntegrationKey, MISSIONS_DIR, _save_json
 
 
 class IntegrationManager:
@@ -124,7 +124,7 @@ class IntegrationManager:
         })
 
         int_path.parent.mkdir(parents=True, exist_ok=True)
-        int_path.write_text(json.dumps({"integrations": integrations}, indent=2))
+        _save_json(int_path, {"integrations": integrations})
         return integration
 
     def get(self, mission_id: str, provider: str, label: str = "") -> Optional[str]:
@@ -141,7 +141,7 @@ class IntegrationManager:
                 decrypted = self._decrypt(i.get("encrypted_value", ""))
                 # Update last_used_at
                 i["last_used_at"] = i.get("created_at", datetime.now().isoformat())
-                int_path.write_text(json.dumps({"integrations": integrations}, indent=2))
+                _save_json(int_path, {"integrations": integrations})
                 return decrypted
         return None
 
@@ -174,7 +174,7 @@ class IntegrationManager:
         integrations = [i for i in integrations if i.get("id") != integration_id]
         if len(integrations) == before:
             return False
-        int_path.write_text(json.dumps({"integrations": integrations}, indent=2))
+        _save_json(int_path, {"integrations": integrations})
         return True
 
     def has(self, mission_id: str, provider: str) -> bool:

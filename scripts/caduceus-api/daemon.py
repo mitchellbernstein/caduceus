@@ -61,10 +61,14 @@ def log(level: str, msg: str, mission_id: str = ""):
     line = f"{prefix} {msg}"
     print(line, flush=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / "daemon.log"
     try:
-        (LOG_DIR / "daemon.log").write_text(
-            (LOG_DIR / "daemon.log").read_text()[-500000:] + line + "\n"
-        )
+        with open(log_path, "a") as f:
+            f.write(line + "\n")
+        # Rotate if over 500KB
+        if log_path.stat().st_size > 500000:
+            content = log_path.read_text()
+            log_path.write_text(content[-500000:])
     except Exception:
         pass
 
@@ -430,7 +434,7 @@ def execute_task(mission: Mission, store: MissionStore, task: Task) -> bool:
             INFO(f"Checkpoint approved, proceeding with task {task.id}", mission_id)
 
     # ── Advisory mode: run but log all actions ──
-    if mission.autonomy_mode.value in ("advisory", "checkpoint"):
+    if mission.autonomy_mode.value == "advisory":
         INFO(f"[ADVISORY] Would execute: {task.title}", mission_id)
         # In advisory mode, just log and move to in_review
         task.status = TaskStatus.IN_REVIEW

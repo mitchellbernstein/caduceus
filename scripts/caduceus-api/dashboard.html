@@ -1901,7 +1901,7 @@ function sortTasks(key) {
 
 function humanStatus(s) {
   const map = {backlog:'Backlog',todo:'To Do',in_progress:'In Progress',in_review:'In Review',completed:'Completed',blocked:'Blocked',cancelled:'Cancelled'};
-  return map[s] || s;
+  return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g,' ') : '—');
 }
 
 // ── Task Detail Panel ──
