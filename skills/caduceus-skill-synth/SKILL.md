@@ -154,20 +154,42 @@ echo "<promise>COMPLETE</promise>"
 
 ### Step 5: Register the New Skill
 
-After writing the skill, update `~/.hermes/caduceus/skills/index.json`:
+After writing the skill, update `~/.hermes/caduceus/skills/index.json`.
+The `path` field MUST be the absolute path to where the skill will live in `~/.hermes/skills/`
+(not the caduceus_private source dir — that is the build location, not the runtime location):
 
 ```bash
-# Add entry to skills array:
-{
-  "name": "caduceus-<name>",
-  "version": "0.1.0",
-  "description": "<description>",
-  "triggers": ["<trigger1>", "<trigger2>"],
-  "path": "skills/caduceus-<name>/SKILL.md",
-  "synthesized_from": "<task that triggered this>",
-  "synthesized_at": "<ISO timestamp>",
-  "author": "caduceus-skill-synth (auto-generated)"
+SKILL_NAME="caduceus-<name>"
+SYNTH_SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # caduceus_private root
+INDEX_JSON="$HOME/.hermes/caduceus/skills/index.json"
+SKILLS_DEST="$HOME/.hermes/skills/$SKILL_NAME"
+
+# Copy skill to ~/.hermes/skills/ (Hermes only discovers from there)
+mkdir -p "$SKILLS_DEST"
+cp -r "$SYNTH_SOURCE/skills/$SKILL_NAME"/* "$SKILLS_DEST/"
+
+# Add absolute path to index — not relative to caduceus_private
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+python3 - << EOF
+import json, sys
+with open("$INDEX_JSON") as f:
+    idx = json.load(f)
+entry = {
+    "name": "$SKILL_NAME",
+    "version": "0.1.0",
+    "description": "<description>",
+    "triggers": ["<trigger1>", "<trigger2>"],
+    "path": "$SKILLS_DEST/SKILL.md",
+    "synthesized_from": "<task that triggered this>",
+    "synthesized_at": "$TIMESTAMP",
+    "author": "caduceus-skill-synth (auto-generated)"
 }
+# Remove old entry if exists (idempotent re-synthesis)
+idx["skills"] = [s for s in idx["skills"] if s.get("name") != "$SKILL_NAME"]
+idx["skills"].append(entry)
+with open("$INDEX_JSON", "w") as f:
+    json.dump(idx, f, indent=2)
+EOF
 ```
 
 ### Step 6: QMD Index
