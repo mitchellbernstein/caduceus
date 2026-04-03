@@ -522,3 +522,84 @@ class MissionStore:
                 task_dict["chat_history"] = self.get_chat(m.id, t.id)
                 all_tasks.append(task_dict)
         return sorted(all_tasks, key=lambda x: x.get("created_at", ""), reverse=True)
+
+
+# ─── Goal Store ──────────────────────────────────────────────────────────────
+
+GOALS_FILE = CADUCEUS_BASE / "goals.json"
+
+@dataclass
+class Goal:
+    """A company/mission-level objective — e.g. 'Get to $1K MRR', 'Launch on PH'."""
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    title: str = ""
+    description: str = ""
+    target_metric: str = ""   # e.g. "$1K MRR", "100 signups"
+    current_value: float = 0.0
+    status: str = "active"     # active | completed | abandoned
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    def progress_pct(self) -> float:
+        """Compute progress percentage from target_metric parsing."""
+        import re
+        target_str = self.target_metric
+        if not target_str:
+            return 0.0
+        m = re.search(r'[\d.]+', target_str.replace(',', ''))
+        if not m:
+            return 0.0
+        try:
+            target_val = float(m.group())
+            if target_val <= 0:
+                return 0.0
+            return min(100.0, round(self.current_value / target_val * 100, 1))
+        except ValueError:
+            return 0.0
+
+
+class GoalStore:
+    """CRUD for goals stored in goals.json."""
+
+    def __init__(self, path: Path = GOALS_FILE):
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _load(self) -> list[dict]:
+        if self.path.exists():
+            return json.loads(self.path.read_text())
+        return []
+
+    def _save(self, goals: list[dict]):
+        tmp = self.path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(goals, indent=2))
+        tmp.rename(self.path)
+
+    def list(self) -> list[Goal]:
+        return [Goal(**g) for g in self._load()]
+
+    def get(self, goal_id: str) -> Optional[Goal]:
+        for g in self._load():
+            if g["id"] == goal_id:
+                return Goal(**g)
+        return None
+
+    def create(self, goal: Goal) -> Goal:
+        goals = self._load()
+        goals.append(asdict(goal))
+        self._save(goals)
+        return goal
+
+    def update(self, goal: Goal) -> Goal:
+        goal.updated_at = datetime.now(timezone.utc).isoformat()
+        goals = self._load()
+        for i, g in enumerate(goals):
+            if g["id"] == goal.id:
+                goals[i] = asdict(goal)
+                break
+        self._save(goals)
+        return goal
+
+    def delete(self, goal_id: str):
+        goals = [g for g in self._load() if g["id"] != goal_id]
+        self._save(goals)

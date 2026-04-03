@@ -26,15 +26,16 @@ import os
 import subprocess
 import re
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
+from typing import Any
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
@@ -64,11 +65,13 @@ app.add_middleware(
 from caduceus_api.models import (
     Mission, MissionStore, MissionStatus, MissionType,
     Task, TaskStatus, AutonomyMode,
+    Goal, GoalStore,
 )
 from caduceus_api.integrations import IntegrationManager, SUPPORTED_PROVIDERS
 
 mission_store = MissionStore()
 integration_manager = IntegrationManager()
+goal_store = GoalStore()
 
 # ─── Pydantic Models ───────────────────────────────────────────────────────────
 
@@ -664,7 +667,7 @@ async def mission_heartbeat(mission_id: str):
     return {"alive": True, "mission_id": mission_id, "last_heartbeat": m.last_heartbeat}
 
 @app.post("/missions/{mission_id}/progress")
-async def save_mission_progress(mission_id: str, progress: dict = Query(...)):
+async def save_mission_progress(mission_id: str, progress: Any = Body(...)):
     """Save progress state for a mission."""
     m = mission_store.get(mission_id)
     if not m:
@@ -1032,6 +1035,287 @@ async def onboarding_create_mission(
         "name": m.name,
         "mission_type": m.mission_type.value,
         "next_step": "integrations",
+    }
+
+
+# ─── Goals ────────────────────────────────────────────────────────────────────
+
+@app.get("/goals", response_model=list)
+async def list_goals():
+    """List all goals."""
+    goals = goal_store.list()
+    return [{
+        "id": g.id,
+        "title": g.title,
+        "description": g.description,
+        "target_metric": g.target_metric,
+        "current_value": g.current_value,
+        "status": g.status,
+        "progress_pct": g.progress_pct(),
+        "created_at": g.created_at,
+        "updated_at": g.updated_at,
+    } for g in goals]
+
+@app.post("/goals")
+async def create_goal(
+    title: str = Query(...),
+    description: str = Query(""),
+    target_metric: str = Query(""),
+    current_value: float = Query(0.0),
+):
+    """Create a new goal."""
+    g = Goal(
+        title=title,
+        description=description,
+        target_metric=target_metric,
+        current_value=current_value,
+    )
+    goal_store.create(g)
+    return {"status": "created", "goal_id": g.id, **asdict(g)}
+
+@app.get("/goals/{goal_id}")
+async def get_goal(goal_id: str):
+    """Get goal detail with associated tasks."""
+    g = goal_store.get(goal_id)
+    if not g:
+        raise HTTPException(404, f"Goal not found: {goal_id}")
+
+    # Find tasks that mention this goal in their description or title
+    # Goals are associated by goal_id field on tasks (if set)
+    # For now, associate by searching task descriptions for the goal title
+    associated_tasks = []
+    for m in mission_store.list():
+        for t in mission_store.get_tasks(m.id):
+            if goal_id in (t.description or "") or title in (t.description or ""):
+                task_dict = asdict(t)
+                task_dict.pop("chat_history", None)
+                task_dict["mission_name"] = m.name
+                task_dict["mission_id"] = m.id
+                associated_tasks.append(task_dict)
+
+    return {
+        "id": g.id,
+        "title": g.title,
+        "description": g.description,
+        "target_metric": g.target_metric,
+        "current_value": g.current_value,
+        "status": g.status,
+        "progress_pct": g.progress_pct(),
+        "created_at": g.created_at,
+        "updated_at": g.updated_at,
+        "associated_tasks": associated_tasks,
+    }
+
+@app.patch("/goals/{goal_id}")
+async def update_goal(
+    goal_id: str,
+    title: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
+    target_metric: Optional[str] = Query(None),
+    current_value: Optional[float] = Query(None),
+    status: Optional[str] = Query(None),
+):
+    """Update a goal."""
+    g = goal_store.get(goal_id)
+    if not g:
+        raise HTTPException(404, "Goal not found")
+    if title is not None:
+        g.title = title
+    if description is not None:
+        g.description = description
+    if target_metric is not None:
+        g.target_metric = target_metric
+    if current_value is not None:
+        g.current_value = current_value
+    if status is not None:
+        if status not in ("active", "completed", "abandoned"):
+            raise HTTPException(400, f"Invalid status: {status}")
+        g.status = status
+    goal_store.update(g)
+    return {"status": "updated", **asdict(g)}
+
+@app.delete("/goals/{goal_id}")
+async def delete_goal(goal_id: str):
+    """Delete a goal."""
+    g = goal_store.get(goal_id)
+    if not g:
+        raise HTTPException(404, "Goal not found")
+    goal_store.delete(goal_id)
+    return {"status": "deleted", "goal_id": goal_id}
+
+
+# ─── Agents ───────────────────────────────────────────────────────────────────
+
+# Agent hierarchy definition
+AGENT_TREE = [
+    {
+        "name": "caduceus-orchestrator",
+        "display_name": "CEO",
+        "description": "Orchestrates all sub-agents, manages mission flywheel, makes high-level decisions.",
+        "children": [
+            {"name": "caduceus-researcher", "display_name": "Researcher", "description": "Deep research, competitive analysis, market intelligence."},
+            {
+                "name": "caduceus-engineer",
+                "display_name": "Builder",
+                "description": "Builds products, integrations, infrastructure, and automation.",
+                "children": [
+                    {"name": "caduceus-ios-dev", "display_name": "iOS Dev", "description": "iOS/macOS application development using Xcode and Swift."},
+                ],
+            },
+            {"name": "caduceus-writer", "display_name": "Writer", "description": "Copywriting, content creation, landing pages, emails."},
+            {"name": "caduceus-monitor", "display_name": "Monitor", "description": "Monitors metrics, uptime, error rates, and mission health."},
+            {"name": "caduceus-kairos", "display_name": "Scientist", "description": "Strategic decision-making, flywheel optimization, business logic."},
+        ],
+    },
+]
+
+HEARTBEATS_DIR = CADUCEUS_BASE / "heartbeats"
+
+def _get_agent_status(agent_name: str) -> dict:
+    """Get status for a single agent from heartbeat file."""
+    import re
+    hb_path = HEARTBEATS_DIR / f"{agent_name}.json"
+    now = datetime.now(timezone.utc)
+    default_status = {
+        "status": "unknown",
+        "last_run": None,
+        "last_output": "",
+    }
+    if not hb_path.exists():
+        return default_status
+
+    try:
+        data = json.loads(hb_path.read_text())
+        last_run_str = data.get("last_run", "")
+        if last_run_str:
+            try:
+                last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+                delta = (now - last_run).total_seconds()
+                if delta < 300:
+                    status = "active"
+                elif delta < 3600:
+                    status = "idle"
+                else:
+                    status = "unknown"
+                return {
+                    "status": status,
+                    "last_run": last_run_str,
+                    "last_output": data.get("last_output", ""),
+                }
+            except Exception:
+                pass
+        return {
+            "status": data.get("status", "unknown"),
+            "last_run": last_run_str,
+            "last_output": data.get("last_output", ""),
+        }
+    except Exception:
+        return default_status
+
+def _flatten_agent_tree(nodes: list, parent_path: str = "") -> list:
+    """Flatten agent tree into a list with path info."""
+    result = []
+    for node in nodes:
+        path = f"{parent_path}/{node['name']}" if parent_path else node["name"]
+        hb = _get_agent_status(node["name"])
+        result.append({
+            "name": node["name"],
+            "display_name": node.get("display_name", node["name"]),
+            "description": node.get("description", ""),
+            "path": path,
+            **hb,
+        })
+        if "children" in node:
+            result.extend(_flatten_agent_tree(node["children"], path))
+    return result
+
+@app.get("/agents")
+async def list_agents():
+    """List all agents with their current status from heartbeat files."""
+    flat = _flatten_agent_tree(AGENT_TREE)
+    # Also check for any additional agents in the skills directory
+    skills_dir = Path.home() / ".hermes" / "skills"
+    extra = []
+    if skills_dir.exists():
+        for d in skills_dir.iterdir():
+            if d.is_dir() and d.name.startswith("caduceus-") and not any(a["name"] == d.name for a in flat):
+                hb = _get_agent_status(d.name)
+                # Try to read description from SKILL.md
+                desc = ""
+                skill_md = d / "SKILL.md"
+                if skill_md.exists():
+                    try:
+                        content = skill_md.read_text()
+                        m = re.search(r"description:\s*(.+)", content)
+                        if m:
+                            desc = m.group(1).strip()
+                    except Exception:
+                        pass
+                extra.append({
+                    "name": d.name,
+                    "display_name": d.name.replace("caduceus-", "").replace("-", " ").title(),
+                    "description": desc,
+                    "path": f"/{d.name}",
+                    **hb,
+                })
+    return flat + extra
+
+@app.get("/agents/{agent_name}")
+async def get_agent(agent_name: str):
+    """Get a single agent's detail including recent tasks."""
+    flat = _flatten_agent_tree(AGENT_TREE)
+    agent = next((a for a in flat if a["name"] == agent_name), None)
+    if not agent:
+        raise HTTPException(404, f"Agent not found: {agent_name}")
+
+    # Find tasks assigned to this agent
+    associated_tasks = []
+    for m in mission_store.list():
+        for t in mission_store.get_tasks(m.id):
+            if t.assignee_skill == agent_name:
+                task_dict = asdict(t)
+                task_dict.pop("chat_history", None)
+                task_dict["mission_name"] = m.name
+                task_dict["mission_id"] = m.id
+                associated_tasks.append(task_dict)
+
+    return {
+        **agent,
+        "associated_tasks": associated_tasks,
+    }
+
+@app.get("/agents-status/summary")
+async def agents_status_summary():
+    """Get a summary of all agent statuses for the header bar."""
+    agents = await list_agents()
+    active_count = sum(1 for a in agents if a.get("status") == "active")
+
+    # Get active mission flywheel state
+    active_missions = [m for m in mission_store.list() if m.status.value == "active"]
+    flywheel_info = None
+    if active_missions:
+        m = active_missions[0]
+        flywheel_info = {
+            "mission_id": m.id,
+            "mission_name": m.name,
+            "flywheel_phase": m.flywheel_phase,
+            "flywheel_iteration": m.flywheel_iteration,
+        }
+
+    # Last daemon heartbeat
+    daemon_hb_path = CADUCEUS_BASE / "daemon_hb.json"
+    last_daemon_hb = None
+    if daemon_hb_path.exists():
+        try:
+            last_daemon_hb = json.loads(daemon_hb_path.read_text()).get("last_run")
+        except Exception:
+            pass
+
+    return {
+        "active_count": active_count,
+        "total_count": len(agents),
+        "flywheel": flywheel_info,
+        "last_daemon_hb": last_daemon_hb,
     }
 
 

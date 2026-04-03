@@ -44,6 +44,7 @@ TASK_RETRY_DELAY = 5         # seconds before retrying a failed task
 MAX_RETRIES = 3              # max retries per task
 CIRCUIT_BREAKER_LIMIT = 100  # consecutive failures before hard stop
 LOG_DIR = Path.home() / ".hermes" / "caduceus" / "logs"
+HEARTBEATS_DIR = Path.home() / ".hermes" / "caduceus" / "heartbeats"
 
 # Flywheel phases in order
 FLYWHEEL_PHASES = ["discover", "decide", "build", "launch", "monitor", "respond", "iterate", "expand"]
@@ -75,6 +76,29 @@ def log(level: str, msg: str, mission_id: str = ""):
 INFO  = lambda m, mid="": log("INFO",  m, mid)
 WARN  = lambda m, mid="": log("WARN",  m, mid)
 ERROR = lambda m, mid="": log("ERROR", m, mid)
+
+
+# ─── Agent Heartbeats ─────────────────────────────────────────────────────────
+
+def write_agent_heartbeat(agent_name: str, status: str = "active", last_output: str = ""):
+    """
+    Write a heartbeat file for an agent.
+    File: ~/.hermes/caduceus/heartbeats/{agent_name}.json
+    """
+    try:
+        HEARTBEATS_DIR.mkdir(parents=True, exist_ok=True)
+        hb = {
+            "agent_name": agent_name,
+            "last_run": datetime.now(timezone.utc).isoformat(),
+            "status": status,
+            "last_output": last_output[:500] if last_output else "",  # Truncate output
+        }
+        hb_path = HEARTBEATS_DIR / f"{agent_name}.json"
+        tmp = hb_path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(hb, indent=2))
+        tmp.rename(hb_path)
+    except Exception:
+        pass  # Non-critical — don't crash daemon over heartbeat writes
 
 
 # ─── Hermes Executor ───────────────────────────────────────────────────────────
@@ -446,6 +470,10 @@ def execute_task(mission: Mission, store: MissionStore, task: Task) -> bool:
     task.started_at = task.started_at or datetime.now(timezone.utc).isoformat()
     store.save_task(mission_id, task)
 
+    # Write agent heartbeat: task starting
+    agent_name = task.assignee_skill or "caduceus-kairos"
+    write_agent_heartbeat(agent_name, "active", f"Starting task: {task.title}")
+
     # Build the execution prompt
     directive = ""
     directive_path = mission.dir / "directive.md"
@@ -479,6 +507,10 @@ Progress update format (write to progress.json after each step):
 """
 
     success, output = hermes_execute(prompt, mission_id, task.id)
+
+    # Write agent heartbeat
+    agent_name = task.assignee_skill or "caduceus-kairos"
+    write_agent_heartbeat(agent_name, "active" if success else "error", output)
 
     if success:
         task.status = TaskStatus.COMPLETED

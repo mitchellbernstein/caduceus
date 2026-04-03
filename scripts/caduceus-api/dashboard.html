@@ -96,6 +96,36 @@
     }
     .header-link:hover { color: var(--text); background: var(--border); }
 
+    /* ── AGENT STATUS BAR ── */
+    .agent-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--dim);
+      padding: 5px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .agent-status-bar .seg {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .agent-status-bar .seg .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+    }
+    .agent-status-bar .seg .dot.active { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .agent-status-bar .seg .dot.idle { background: var(--yellow); }
+    .agent-status-bar .seg .dot.error { background: var(--red); }
+    .agent-status-bar .seg .dot.unknown { background: var(--muted); }
+    .agent-status-bar .flywheel-seg {
+      font-family: var(--font-mono);
+      color: var(--accent);
+    }
+
     /* ── LAYOUT ── */
     .app {
       display: flex;
@@ -519,6 +549,330 @@
       color: var(--dim);
       margin-top: 4px;
     }
+
+    /* ── GOALS VIEW ── */
+    .goals-view { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .goals-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .goals-header h2 { font-size: 15px; font-weight: 600; }
+    .goals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .goal-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .goal-card:hover { border-color: var(--accent); }
+    .goal-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .goal-card-title { font-size: 14px; font-weight: 600; flex: 1; }
+    .goal-card-status {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+    .goal-card-status.active { background: var(--green-dim); color: var(--green); }
+    .goal-card-status.completed { background: var(--accent-glow); color: var(--accent); }
+    .goal-card-status.abandoned { background: var(--red-dim); color: var(--red); }
+    .goal-card-desc { font-size: 12px; color: var(--dim); line-height: 1.5; margin-bottom: 12px; }
+    .goal-card-metric { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-family: var(--font-mono); }
+    .goal-progress-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .goal-progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+    .goal-progress-fill.complete { background: var(--green); }
+    .goal-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .goal-pct { font-size: 12px; font-weight: 600; font-family: var(--font-mono); }
+    .goal-current { font-size: 11px; color: var(--dim); font-family: var(--font-mono); }
+
+    /* Goal Detail Panel */
+    .goal-detail {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .goal-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .goal-detail h3 { font-size: 16px; font-weight: 600; }
+    .goal-detail-close { cursor: pointer; font-size: 16px; color: var(--dim); }
+    .goal-detail-close:hover { color: var(--text); }
+    .goal-detail-desc { font-size: 13px; color: var(--dim); margin-bottom: 16px; line-height: 1.6; }
+    .goal-detail-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .goal-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .goal-stat-value { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
+    .goal-stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+    .goal-detail-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 10px; margin-top: 20px; }
+    .goal-update-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .goal-update-form input[type="number"] {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      width: 120px;
+    }
+    .goal-update-form input[type="number"]:focus { outline: none; border-color: var(--accent); }
+    .goal-update-form select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-ui);
+    }
+    .btn-primary {
+      background: var(--accent);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font-ui);
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-danger {
+      background: var(--red-dim);
+      border: 1px solid rgba(255, 76, 76, 0.3);
+      color: var(--red);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font-ui);
+    }
+    .btn-danger:hover { background: rgba(255, 76, 76, 0.2); }
+
+    /* ── AGENTS VIEW ── */
+    .agents-view { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .agents-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .agents-header h2 { font-size: 15px; font-weight: 600; }
+    .org-tree {
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .org-node {
+      padding: 4px 0;
+    }
+    .org-node-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.1s;
+      border: 1px solid transparent;
+    }
+    .org-node-row:hover { background: var(--card); border-color: var(--border); }
+    .org-node-row.selected { background: var(--accent-glow); border-color: var(--accent); }
+    .org-node-row.active { border-color: rgba(60, 255, 160, 0.3); }
+    .org-node-row.idle { opacity: 0.7; }
+    .org-node-row.error { border-color: rgba(255, 76, 76, 0.3); }
+    .org-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .org-status-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .org-status-dot.idle { background: var(--yellow); }
+    .org-status-dot.error { background: var(--red); }
+    .org-status-dot.unknown { background: var(--muted); }
+    .org-status-dot.paused { background: var(--dim); }
+    .org-name { font-weight: 600; font-size: 13px; }
+    .org-role { font-size: 11px; color: var(--dim); margin-left: 4px; }
+    .org-last-run { font-size: 10px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+    .org-children { padding-left: 24px; border-left: 1px dashed var(--border); margin-left: 12px; }
+    .org-branch { padding-left: 12px; position: relative; }
+    .org-branch::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .org-branch::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 16px;
+      width: 12px;
+      height: 1px;
+      background: var(--border);
+    }
+    .org-leaf { padding-left: 24px; position: relative; }
+    .org-leaf::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 16px;
+      width: 12px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Agent Detail Panel */
+    .agent-detail {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .agent-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .agent-detail-icon {
+      width: 40px; height: 40px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .agent-detail-title { font-size: 16px; font-weight: 600; }
+    .agent-detail-role { font-size: 12px; color: var(--dim); }
+    .agent-detail-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-left: auto;
+    }
+    .agent-detail-status.active { background: var(--green-dim); color: var(--green); }
+    .agent-detail-status.idle { background: var(--yellow-dim); color: var(--yellow); }
+    .agent-detail-status.error { background: var(--red-dim); color: var(--red); }
+    .agent-detail-status.unknown { background: var(--border); color: var(--muted); }
+    .agent-detail-status.paused { background: var(--border); color: var(--dim); }
+    .agent-detail-desc { font-size: 13px; color: var(--dim); line-height: 1.6; margin-bottom: 12px; }
+    .agent-detail-last-output {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--dim);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+    .agent-detail-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 10px; margin-top: 16px; }
+    .agent-task-list { display: flex; flex-direction: column; gap: 6px; }
+    .agent-task-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .agent-task-item:hover { border-color: var(--dim); }
+    .agent-task-item .agent-task-title { font-weight: 500; margin-bottom: 2px; }
+    .agent-task-item .agent-task-meta { font-size: 10px; color: var(--muted); }
+
+    /* ── CHECKPOINT APPROVAL ── */
+    .checkpoint-approval {
+      background: var(--yellow-dim);
+      border-bottom: 1px solid rgba(245, 197, 66, 0.3);
+      padding: 12px 20px;
+      flex-shrink: 0;
+    }
+    .checkpoint-approval h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .checkpoint-approval p { font-size: 12px; color: var(--dim); margin-bottom: 8px; }
+    .checkpoint-approval .options { display: flex; gap: 8px; margin-bottom: 8px; }
+    .checkpoint-approval .options .checkpoint-option {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .checkpoint-approval .checkpoint-actions { display: flex; gap: 8px; }
+    .checkpoint-approval .checkpoint-actions button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      border: none;
+    }
+    .checkpoint-approval .checkpoint-actions .approve { background: var(--green); color: #000; }
+    .checkpoint-approval .checkpoint-actions .reject { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,76,76,0.3); }
 
     /* ── SETTINGS PANEL ── */
     .settings-panel { padding: 16px 20px; overflow-y: auto; flex: 1; }
@@ -963,6 +1317,22 @@
   <a href="http://localhost:8765" class="header-link">⌂</a>
 </header>
 
+<!-- AGENT STATUS BAR -->
+<div class="agent-status-bar" id="agent-status-bar">
+  <div class="seg" id="agents-active-seg">
+    <span class="dot unknown" id="agents-status-dot"></span>
+    <span id="agents-active-text">Loading agents...</span>
+  </div>
+  <div class="seg flywheel-seg" id="flywheel-seg" style="display:none">
+    Flywheel: <span id="flywheel-phase-text">—</span>
+    <span style="color:var(--muted)">(iter <span id="flywheel-iter-text">0</span>)</span>
+  </div>
+  <div class="seg" id="daemon-hb-seg" style="display:none">
+    <span style="color:var(--muted)">Daemon:</span>
+    <span id="daemon-hb-text">—</span>
+  </div>
+</div>
+
 <div class="app">
   <!-- SIDEBAR -->
   <div class="sidebar">
@@ -983,10 +1353,17 @@
         ◈ Tasks
         <span class="count" id="nav-tasks-count">0</span>
       </div>
+      <div class="nav-item" onclick="showView('goals')" id="nav-goals">
+        🎯 Goals
+        <span class="count" id="nav-goals-count">0</span>
+      </div>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Browse</div>
+      <div class="nav-item" onclick="showView('agents')" id="nav-agents">
+        🤖 Agents
+      </div>
       <div class="nav-item" onclick="showView('skills')" id="nav-skills">
         ⚡ Skills
         <span class="count" id="nav-skills-count">0</span>
@@ -1115,6 +1492,37 @@
           </table>
         </div>
         <div id="tasks-kanban-view" class="kanban-board" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- GOALS VIEW -->
+    <div class="content" id="content-goals" style="display:none">
+      <div class="goals-view">
+        <div class="goals-header">
+          <h2>🎯 Goals</h2>
+          <button class="btn-primary" onclick="openNewGoalModal()">+ New Goal</button>
+        </div>
+
+        <!-- Goal Detail Panel (shown when a goal is selected) -->
+        <div id="goal-detail-panel" style="display:none"></div>
+
+        <!-- Goal Cards Grid -->
+        <div class="goals-grid" id="goals-grid"></div>
+      </div>
+    </div>
+
+    <!-- AGENTS VIEW -->
+    <div class="content" id="content-agents" style="display:none">
+      <div class="agents-view">
+        <div class="agents-header">
+          <h2>🤖 Agent Hierarchy</h2>
+        </div>
+
+        <!-- Agent Detail Panel (shown when an agent is selected) -->
+        <div id="agent-detail-panel" style="display:none"></div>
+
+        <!-- Org Tree -->
+        <div class="org-tree" id="org-tree"></div>
       </div>
     </div>
 
@@ -1402,6 +1810,34 @@
   </div>
 </div>
 
+<!-- NEW GOAL MODAL -->
+<div class="modal-overlay" id="new-goal-modal">
+  <div class="modal">
+    <h3>Create New Goal</h3>
+    <p>Set a company or mission-level objective</p>
+    <div class="modal-field">
+      <label>Goal Title</label>
+      <input class="modal-input" id="new-goal-title" type="text" placeholder="e.g. Get to $1K MRR">
+    </div>
+    <div class="modal-field">
+      <label>Description (optional)</label>
+      <textarea class="modal-textarea" id="new-goal-desc" rows="3" placeholder="Describe what success looks like..."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Target Metric</label>
+      <input class="modal-input" id="new-goal-metric" type="text" placeholder="e.g. $1000 MRR, 100 signups, 50 users">
+    </div>
+    <div class="modal-field">
+      <label>Current Value</label>
+      <input class="modal-input" id="new-goal-current" type="number" step="any" min="0" placeholder="0" style="width:150px">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeNewGoalModal()">Cancel</button>
+      <button class="modal-submit" id="new-goal-submit" onclick="submitNewGoal()">Create Goal</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'http://localhost:8765';
 
@@ -1417,6 +1853,10 @@ let currentTaskPanel = null; // { missionId, taskId }
 let tasksView = 'list';
 let taskSortKey = 'created_at';
 let taskSortDir = 'desc';
+let allGoals = [];
+let currentGoalId = null;
+let allAgents = [];
+let currentAgentName = null;
 
 // ── Init ──
 async function init() {
@@ -1438,10 +1878,15 @@ async function init() {
   loadCheckpoints();
   loadInbox();
   loadSettings();
+  loadGoals();
+  loadAgentsStatus();
+  loadAgents();
   setInterval(loadMissions, 5000);
   setInterval(loadCheckpoints, 5000);
   setInterval(loadInbox, 10000);
   setInterval(loadAllTasks, 8000);
+  setInterval(loadGoals, 15000);
+  setInterval(loadAgentsStatus, 10000);
 }
 
 async function api(path, options = {}) {
@@ -1472,17 +1917,19 @@ function log(text, type='system') {
 // ── Views ──
 function showView(name) {
   currentView = name;
-  ['terminal','missions','inbox','tasks','skills','qmd','sessions','settings'].forEach(v => {
+  ['terminal','missions','inbox','tasks','goals','agents','skills','qmd','sessions','settings'].forEach(v => {
     const el = document.getElementById('content-' + v);
     if (el) el.style.display = v === name ? 'flex' : 'none';
   });
-  ['terminal','missions','inbox','tasks','skills','qmd','sessions','settings'].forEach(v => {
+  ['terminal','missions','inbox','tasks','goals','agents','skills','qmd','sessions','settings'].forEach(v => {
     const nav = document.getElementById('nav-' + v);
     if (nav) nav.classList.toggle('active', v === name);
   });
   if (name === 'tasks') loadAllTasks();
   if (name === 'inbox') loadInbox();
   if (name === 'settings') loadSettings();
+  if (name === 'goals') loadGoals();
+  if (name === 'agents') loadAgents();
 }
 
 // ── Launch Mission ──
@@ -1573,9 +2020,9 @@ async function loadMissions() {
           </div>
           <div class="mission-iter">${m.iterations || 0} iters</div>
           <div class="mission-actions">
-            ${m.status==='active'||m.status==='running'?'<button onclick="event.stopPropagation();pauseMission(\\''+m.id+'\\')">Pause</button>':''}
-            ${m.status==='paused'?'<button onclick="event.stopPropagation();resumeMission(\\''+m.id+'\\')">Resume</button>':''}
-            <button class="danger" onclick="event.stopPropagation();abortMission(\\''+m.id+'\\')">Abort</button>
+            ${m.status==='active'||m.status==='running'?'<button onclick="event.stopPropagation();pauseMission(\\'+m.id+\\')">Pause</button>':''}
+            ${m.status==='paused'?'<button onclick="event.stopPropagation();resumeMission(\\'+m.id+\\')">Resume</button>':''}
+            <button class="danger" onclick="event.stopPropagation();abortMission(\\'+m.id+\\')">Abort</button>
           </div>
         </div>`).join('');
 
@@ -1767,7 +2214,6 @@ async function resolveInboxCheckpoint(id, action) {
 }
 
 function openTaskFromMission(missionId) {
-  // Find first task for this mission and open it
   const task = allTasks.find(t => t.mission_id === missionId);
   if (task) {
     openTaskPanel(task.mission_id, task.id);
@@ -1784,7 +2230,6 @@ async function loadAllTasks() {
     document.getElementById('nav-tasks-count').textContent = allTasks.length;
     renderTasks();
   } catch(e) {
-    // Fallback: load per mission
     try {
       const missions = await api('/missions');
       const tasks = [];
@@ -1826,7 +2271,6 @@ function renderTasksList() {
     return true;
   });
 
-  // Sort
   tasks.sort((a, b) => {
     let aVal = a[taskSortKey] || '';
     let bVal = b[taskSortKey] || '';
@@ -1839,7 +2283,7 @@ function renderTasksList() {
     ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No tasks found</td></tr>'
     : tasks.map(t => `
       <tr onclick="openTaskPanel('${t.mission_id}','${t.id}')">
-        <td style="font-weight:500">${t.title}</td>
+        <td style="font-weight:500">${escapeHtml(t.title)}</td>
         <td><span class="status-badge ${t.status}">${humanStatus(t.status)}</span></td>
         <td><span class="priority-badge ${t.priority}">${t.priority}</span></td>
         <td style="color:var(--dim);font-size:11px">${t.assignee_skill || '—'}</td>
@@ -1870,7 +2314,7 @@ function renderTasksKanban() {
         </div>
         ${colTasks.map(t => `
           <div class="kanban-card" onclick="openTaskPanel('${t.mission_id}','${t.id}')">
-            <div class="kanban-card-title">${t.title}</div>
+            <div class="kanban-card-title">${escapeHtml(t.title)}</div>
             <div class="kanban-card-meta">
               <span class="priority-badge ${t.priority}" style="font-size:9px">${t.priority}</span>
             </div>
@@ -1943,7 +2387,6 @@ async function updateTaskField(field, value) {
     update[field] = value;
     const params = new URLSearchParams(update).toString();
     await api(`/missions/${missionId}/tasks/${taskId}?${params}`, { method: 'PATCH' });
-    // Update task in local list too
     const task = allTasks.find(t => t.id === taskId && t.mission_id === missionId);
     if (task) task[field] = value;
     renderTasks();
@@ -1975,7 +2418,6 @@ async function sendTaskChat() {
   sendBtn.disabled = true;
   input.value = '';
 
-  // Optimistically add user message
   const container = document.getElementById('task-chat-messages');
   const empty = container.querySelector('.chat-empty');
   if (empty) empty.remove();
@@ -1984,11 +2426,9 @@ async function sendTaskChat() {
     const res = await api(`/missions/${missionId}/tasks/${taskId}/chat?message=${encodeURIComponent(message)}`, { method: 'POST' });
     renderTaskChat(res.chat_history || []);
 
-    // Update task in local list
     const task = allTasks.find(t => t.id === taskId && t.mission_id === missionId);
     if (task) {
       task.chat_history = res.chat_history;
-      // Check if status changed
       if (res.response) {
         const statusMatch = res.response.match(/<status>(\w+)<\/status>/);
         if (statusMatch) task.status = statusMatch[1];
@@ -2006,10 +2446,300 @@ async function sendTaskChat() {
   sendBtn.disabled = false;
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+// ── Goals ──
+async function loadGoals() {
+  try {
+    const goals = await api('/goals');
+    allGoals = goals;
+    document.getElementById('nav-goals-count').textContent = goals.length;
+    renderGoals();
+  } catch(e) { console.error(e); }
+}
+
+function renderGoals() {
+  const grid = document.getElementById('goals-grid');
+  if (!grid) return;
+
+  grid.innerHTML = allGoals.length === 0
+    ? '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🎯</div><h3>No goals yet</h3><p>Create your first goal to track your company objectives.</p></div>'
+    : allGoals.map(g => `
+      <div class="goal-card" onclick="openGoalDetail('${g.id}')">
+        <div class="goal-card-header">
+          <div class="goal-card-title">${escapeHtml(g.title)}</div>
+          <span class="goal-card-status ${g.status}">${g.status}</span>
+        </div>
+        <div class="goal-card-desc">${escapeHtml(g.description || '')}</div>
+        <div class="goal-card-metric">${escapeHtml(g.target_metric || '—')}</div>
+        <div class="goal-progress-track">
+          <div class="goal-progress-fill ${g.progress_pct >= 100 ? 'complete' : ''}" style="width:${Math.min(100, g.progress_pct || 0)}%"></div>
+        </div>
+        <div class="goal-card-footer">
+          <span class="goal-current">${g.current_value} / ${g.target_metric || '?'}</span>
+          <span class="goal-pct">${g.progress_pct || 0}%</span>
+        </div>
+      </div>`).join('');
+
+  // Also re-render detail panel if a goal is selected
+  if (currentGoalId) {
+    const g = allGoals.find(x => x.id === currentGoalId);
+    if (g) renderGoalDetail(g);
+  }
+}
+
+async function openGoalDetail(goalId) {
+  currentGoalId = goalId;
+  try {
+    const g = await api(`/goals/${goalId}`);
+    allGoals = allGoals.map(x => x.id === goalId ? g : x);
+    renderGoalDetail(g);
+  } catch(e) { console.error(e); }
+}
+
+function renderGoalDetail(g) {
+  const panel = document.getElementById('goal-detail-panel');
+  panel.style.display = 'block';
+  const pct = g.progress_pct || 0;
+  panel.innerHTML = `
+    <div class="goal-detail">
+      <div class="goal-detail-header">
+        <h3>${escapeHtml(g.title)}</h3>
+        <span class="goal-detail-close" onclick="closeGoalDetail()">✕</span>
+      </div>
+      <div class="goal-detail-desc">${escapeHtml(g.description || 'No description.')}</div>
+
+      <div class="goal-detail-stats">
+        <div class="goal-stat">
+          <div class="goal-stat-value">${g.progress_pct || 0}%</div>
+          <div class="goal-stat-label">Progress</div>
+        </div>
+        <div class="goal-stat">
+          <div class="goal-stat-value" style="font-size:14px">${g.current_value}</div>
+          <div class="goal-stat-label">Current</div>
+        </div>
+        <div class="goal-stat">
+          <div class="goal-stat-value" style="font-size:14px">${escapeHtml(g.target_metric || '—')}</div>
+          <div class="goal-stat-label">Target</div>
+        </div>
+      </div>
+
+      <div class="goal-detail-section-title">Update Progress</div>
+      <div class="goal-update-form">
+        <input type="number" id="goal-update-current" value="${g.current_value}" step="any" min="0" placeholder="Current value">
+        <select id="goal-update-status">
+          <option value="active" ${g.status === 'active' ? 'selected' : ''}>Active</option>
+          <option value="completed" ${g.status === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="abandoned" ${g.status === 'abandoned' ? 'selected' : ''}>Abandoned</option>
+        </select>
+        <button class="btn-primary" onclick="updateGoalProgress('${g.id}')">Update</button>
+        <button class="btn-danger" onclick="deleteGoal('${g.id}')">Delete Goal</button>
+      </div>
+
+      ${(g.associated_tasks || []).length > 0 ? `
+        <div class="goal-detail-section-title">Associated Tasks</div>
+        <div class="agent-task-list">
+          ${g.associated_tasks.map(t => `
+            <div class="agent-task-item" onclick="openTaskPanel('${t.mission_id}','${t.id}')">
+              <div class="agent-task-title">${escapeHtml(t.title)}</div>
+              <div class="agent-task-meta">${t.mission_name || '—'} · <span class="status-badge ${t.status}">${humanStatus(t.status)}</span></div>
+            </div>`).join('')}
+        </div>
+      ` : `
+        <div class="goal-detail-section-title">Associated Tasks</div>
+        <div style="color:var(--muted);font-size:12px">No associated tasks yet.</div>
+      `}
+    </div>
+  `;
+
+  // Scroll to panel
+  document.getElementById('goal-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeGoalDetail() {
+  currentGoalId = null;
+  document.getElementById('goal-detail-panel').style.display = 'none';
+}
+
+async function updateGoalProgress(goalId) {
+  const currentVal = parseFloat(document.getElementById('goal-update-current').value) || 0;
+  const status = document.getElementById('goal-update-status').value;
+  try {
+    await api(`/goals/${goalId}?current_value=${currentVal}&status=${status}`, { method: 'PATCH' });
+    await loadGoals();
+  } catch(e) { console.error(e); }
+}
+
+async function deleteGoal(goalId) {
+  if (!confirm('Delete this goal?')) return;
+  try {
+    await api(`/goals/${goalId}`, { method: 'DELETE' });
+    closeGoalDetail();
+    await loadGoals();
+  } catch(e) { console.error(e); }
+}
+
+// ── Agents ──
+async function loadAgents() {
+  try {
+    const agents = await api('/agents');
+    allAgents = agents;
+    renderAgents();
+  } catch(e) { console.error(e); }
+}
+
+async function loadAgentsStatus() {
+  try {
+    const summary = await api('/agents-status/summary');
+    const dot = document.getElementById('agents-status-dot');
+    const text = document.getElementById('agents-active-text');
+    const flywheelSeg = document.getElementById('flywheel-seg');
+    const daemonSeg = document.getElementById('daemon-hb-seg');
+
+    const count = summary.active_count || 0;
+    dot.className = 'dot ' + (count > 0 ? 'active' : 'unknown');
+    text.textContent = `${count} agent${count !== 1 ? 's' : ''} active`;
+
+    if (summary.flywheel) {
+      flywheelSeg.style.display = 'flex';
+      document.getElementById('flywheel-phase-text').textContent =
+        `${summary.flywheel.flywheel_phase.toUpperCase()} (iter ${summary.flywheel.flywheel_iteration})`;
+    } else {
+      flywheelSeg.style.display = 'none';
+    }
+
+    if (summary.last_daemon_hb) {
+      daemonSeg.style.display = 'flex';
+      const hbDate = new Date(summary.last_daemon_hb);
+      const now = new Date();
+      const diffMins = Math.round((now - hbDate) / 60000);
+      document.getElementById('daemon-hb-text').textContent = `${diffMins} min ago`;
+    } else {
+      daemonSeg.style.display = 'none';
+    }
+  } catch(e) {
+    // Silently fail — status bar just shows unknown
+  }
+}
+
+// Org tree definition (mirrors server.py)
+const ORG_TREE = [
+  {
+    name: 'caduceus-orchestrator',
+    display_name: 'CEO',
+    children: [
+      { name: 'caduceus-researcher', display_name: 'Researcher' },
+      { name: 'caduceus-engineer', display_name: 'Builder', children: [
+        { name: 'caduceus-ios-dev', display_name: 'iOS Dev' },
+      ]},
+      { name: 'caduceus-writer', display_name: 'Writer' },
+      { name: 'caduceus-monitor', display_name: 'Monitor' },
+      { name: 'caduceus-kairos', display_name: 'Scientist' },
+    ],
+  },
+];
+
+function renderAgents() {
+  const tree = document.getElementById('org-tree');
+  if (!tree) return;
+  tree.innerHTML = renderOrgNode(ORG_TREE, allAgents);
+}
+
+function renderOrgNode(nodes, allAgents, isRoot = false) {
+  return nodes.map(node => {
+    const agent = allAgents.find(a => a.name === node.name) || {};
+    const status = agent.status || 'unknown';
+    const lastRun = agent.last_run ? formatRelTime(agent.last_run) : 'Never';
+    const isSelected = currentAgentName === node.name;
+
+    const childrenHtml = node.children ? `
+      <div class="org-children">
+        ${node.children.map(child => renderOrgNode([child], allAgents)).join('')}
+      </div>` : '';
+
+    return `
+      <div class="org-node">
+        <div class="org-node-row ${status} ${isSelected ? 'selected' : ''}" onclick="selectAgent('${node.name}')">
+          <div class="org-status-dot ${status}"></div>
+          <span class="org-name">${node.display_name}</span>
+          <span class="org-role">(${node.name.replace('caduceus-', '')})</span>
+          <span class="org-last-run">${lastRun}</span>
+        </div>
+        ${childrenHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectAgent(name) {
+  currentAgentName = name;
+  renderAgents(); // Re-render to show selection
+  openAgentDetail(name);
+}
+
+async function openAgentDetail(name) {
+  try {
+    const agent = await api(`/agents/${name}`);
+    renderAgentDetail(agent);
+  } catch(e) { console.error(e); }
+}
+
+function renderAgentDetail(agent) {
+  const panel = document.getElementById('agent-detail-panel');
+  panel.style.display = 'block';
+  const status = agent.status || 'unknown';
+  const statusClass = status;
+
+  panel.innerHTML = `
+    <div class="agent-detail">
+      <div class="agent-detail-header">
+        <div class="agent-detail-icon">🤖</div>
+        <div>
+          <div class="agent-detail-title">${agent.display_name || agent.name}</div>
+          <div class="agent-detail-role">${agent.name}</div>
+        </div>
+        <div class="agent-detail-status ${statusClass}">
+          <span class="org-status-dot ${statusClass}" style="position:static;display:inline-block"></span>
+          ${status}
+        </div>
+      </div>
+      <div class="agent-detail-desc">${escapeHtml(agent.description || 'No description available.')}</div>
+
+      ${agent.last_run ? `
+        <div style="font-size:11px;color:var(--muted)">
+          Last active: <span style="color:var(--dim)">${new Date(agent.last_run).toLocaleString()}</span>
+        </div>
+      ` : ''}
+
+      ${agent.last_output ? `
+        <div class="agent-detail-section-title">Last Output</div>
+        <div class="agent-detail-last-output">${escapeHtml(agent.last_output)}</div>
+      ` : ''}
+
+      ${(agent.associated_tasks || []).length > 0 ? `
+        <div class="agent-detail-section-title">Recent Tasks</div>
+        <div class="agent-task-list">
+          ${agent.associated_tasks.slice(0, 10).map(t => `
+            <div class="agent-task-item" onclick="openTaskPanel('${t.mission_id}','${t.id}')">
+              <div class="agent-task-title">${escapeHtml(t.title)}</div>
+              <div class="agent-task-meta">${t.mission_name || '—'} · <span class="status-badge ${t.status}">${humanStatus(t.status)}</span></div>
+            </div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  document.getElementById('agent-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function formatRelTime(isoString) {
+  try {
+    const d = new Date(isoString);
+    const now = new Date();
+    const diffSec = Math.round((now - d) / 1000);
+    if (diffSec < 60) return `${diffSec}s ago`;
+    if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h ago`;
+    return `${Math.round(diffSec / 86400)}d ago`;
+  } catch(e) { return '—'; }
 }
 
 // ── New Task Modal ──
@@ -2051,14 +2781,49 @@ async function submitNewTask() {
     const res = await api(`/missions/${missionId}/tasks?title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}&priority=${priority}`, { method: 'POST' });
     closeNewTaskModal();
     loadAllTasks();
-
-    // Open the task detail panel
     setTimeout(() => openTaskPanel(missionId, res.task_id), 100);
   } catch(e) {
     alert('Error creating task: ' + e.message);
   }
   btn.disabled = false;
   btn.textContent = 'Create Task';
+}
+
+// ── New Goal Modal ──
+function openNewGoalModal() {
+  document.getElementById('new-goal-modal').classList.add('open');
+  document.getElementById('new-goal-title').focus();
+}
+
+function closeNewGoalModal() {
+  document.getElementById('new-goal-modal').classList.remove('open');
+  document.getElementById('new-goal-title').value = '';
+  document.getElementById('new-goal-desc').value = '';
+  document.getElementById('new-goal-metric').value = '';
+  document.getElementById('new-goal-current').value = '';
+}
+
+async function submitNewGoal() {
+  const title = document.getElementById('new-goal-title').value.trim();
+  const desc = document.getElementById('new-goal-desc').value.trim();
+  const metric = document.getElementById('new-goal-metric').value.trim();
+  const current = parseFloat(document.getElementById('new-goal-current').value) || 0;
+
+  if (!title) return;
+
+  const btn = document.getElementById('new-goal-submit');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  try {
+    await api(`/goals?title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}&target_metric=${encodeURIComponent(metric)}&current_value=${current}`, { method: 'POST' });
+    closeNewGoalModal();
+    await loadGoals();
+  } catch(e) {
+    alert('Error creating goal: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Create Goal';
 }
 
 // ── QMD ──
@@ -2208,7 +2973,7 @@ function closeAddIntegrationModal() {
 
 function updateIntPlaceholder() {
   const provider = document.getElementById('add-int-provider').value;
-  const placeholders = {openai:'sk-...',stripe:'sk_live_...',sendgrid:'SG....',twilio:'AC...',postgres:'postgres://user:pass@host:5432/db',s3:'AKIA...',webhook:'https://hooks.zapier.com/...',domain:'mydomain.com'};
+  const placeholders = {openai:'sk-...',stripe:'sk_live_...',sendgrid:'SG....',twilio:'AC...',postgres:'postgres://user:***@host:5432/db',s3:'AKIA...',webhook:'https://hooks.zapier.com/...',domain:'mydomain.com'};
   document.getElementById('add-int-key').placeholder = placeholders[provider] || 'API key...';
 }
 
@@ -2236,6 +3001,14 @@ async function submitAddIntegration() {
   }
   btn.disabled = false;
   btn.textContent = 'Add Integration';
+}
+
+// ── Utility ──
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ── Priority option click handling ──
