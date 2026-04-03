@@ -12,7 +12,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [orchestration, swarm, multi-agent, caduceus]
-    related_skills: [caduceus-engineer, caduceus-researcher, caduceus-writer, caduceus-monitor, caduceus-themis, caduceus-kairos]
+    related_skills: [caduceus-engineer, caduceus-researcher, caduceus-writer, caduceus-monitor, caduceus-themis, caduceus-kairos, caduceus-cloner, caduceus-skill-synth]
 triggers:
   - "run the (orchestrator|engineer|researcher|writer|monitor|themis|kairos)"
   - "orchestrate"
@@ -23,6 +23,8 @@ triggers:
   - "what's running"
   - "set up a cron"
   - "schedule (a )?task"
+  - "build a new skill"
+  - "design a skill"
   - "/caduceus"
 ---
 
@@ -74,6 +76,40 @@ User → "run the researcher on the UGC project"
 
 **You never need to babysit agents.** Spawn them and read the coordination log.
 
+## Skill Registry Check (Before Every Spawn)
+
+**Before spawning any sub-agent, check the skill registry:**
+
+```bash
+# Read the registry
+cat ~/.hermes/caduceus/skills/index.json
+
+# Check if any skill's triggers match the task
+# Match the task description against trigger phrases in the registry
+```
+
+### Decision Tree
+
+```
+Task received
+  ↓
+Does any skill's triggers match the task?
+  ├─ YES → Spawn that skill's agent
+  │
+  ├─ NO → Check if Kairos should design a new skill
+  │          ├─ Directive allows it? → Trigger caduceus-skill-synth
+  │          │     → Kairos designs SKILL.md + scripts
+  │          │     → Register in index.json + QMD
+  │          │     → Spawn the new skill
+  │          └─ Directive blocks it? → Report to user: "No skill matches.
+  │               How to handle: [1] Build new skill  [2] Use existing skill  [3] Skip"
+  │
+  └─ UNSURE → Ask the user which skill to use
+```
+
+**The registry is the single source of truth for "what skills exist."**
+Never spawn an agent without checking first.
+
 ## Available Sub-Agents
 
 | Role | Skill | What They Do |
@@ -86,6 +122,7 @@ User → "run the researcher on the UGC project"
 | kairos | caduceus-kairos | Bounded autonomous experimentation |
 | researcher | caduceus-researcher | Competitive space research — find top products, inspect them, produce insight doc |
 | cloner | caduceus-cloner | Autonomous SaaS cloning — URL → PRD → implemented clone + QA |
+| skill-synth | caduceus-skill-synth | Self-improving skill factory — designs and writes new skills when none match |
 
 ## Caduceus Governance
 
