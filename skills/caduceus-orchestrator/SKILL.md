@@ -72,6 +72,58 @@ User → "run the researcher on the UGC project"
 | themis | caduceus-themis | GSD-style project onboarding |
 | kairos | caduceus-kairos | Bounded autonomous experimentation |
 
+## Kairos (Experiment) Tasks
+
+Kairos runs bounded autonomous experiment loops using the **Watchdog + Promise Pattern**
+(influenced by Ralph-to-Ralph). When spawning a Kairos task:
+
+### Step 1: Initialize the experiment
+Before spawning Kairos, set up the experiment directory with git:
+
+```bash
+# Ensure the project is a git repo (required for cron_backup)
+cd ~/.hermes/caduceus
+git init 2>/dev/null || true
+git add -A && git commit -m "chore: init caduceus for Kairos" 2>/dev/null || true
+
+# Create experiment dir
+mkdir -p ~/.hermes/caduceus/projects/<project>/experiments/<experiment-id>
+```
+
+### Step 2: Create progress.json
+```json
+{
+  "experiment_id": "<experiment-id>",
+  "iteration": 0,
+  "max_iterations": 5,
+  "status": "running",
+  "updated": "YYYY-MM-DD HH:MM"
+}
+```
+
+### Step 3: Spawn Kairos with the watchdog
+```bash
+# Run one iteration at a time via hermes, wrapped by the watchdog
+./scripts/kairos-watchdog.sh <experiment-id> [max-restarts]
+```
+
+Or via the orchestrator's delegate_task + polling approach:
+1. Spawn Kairos via `delegate_task` for exactly ONE iteration
+2. After it completes, check for `<promise>NEXT</promise>` or `<promise>COMPLETE</promise>`
+3. If NEXT → spawn again. If COMPLETE → stop.
+4. After each completion, git commit the experiment state
+
+### Step 4: Key Kairos parameters
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max_iterations` | 5 | Hard cap on experiment iterations |
+| `max_restarts` | 3 | Max crash-restarts per iteration |
+| `experiment_id` | — | Unique experiment identifier |
+| `dependent_on` | [] | Upstream claim IDs this experiment depends on |
+
+### Step 5: Monitor via progress.json
+The orchestrator can poll `progress.json` to check Kairos status without reading QMD.
+
 ## Key Commands
 
 ### Create and run a task

@@ -64,7 +64,7 @@ Read the project context if available:
 
 ## Output Format
 
-Write research reports to QMD:
+Write research reports to QMD with `id`, `dependent_on`, and `verification_status` fields:
 
 ```markdown
 # Research: <Topic>
@@ -73,6 +73,9 @@ Date: YYYY-MM-DD
 Researcher: caduceus-researcher
 Project: <project name>
 
+## Claim ID
+`<project>-claim-001`
+
 ## Research Question
 <What we're trying to understand>
 
@@ -80,7 +83,6 @@ Project: <project name>
 
 ### Finding 1
 <Description>
-
 **Evidence:** <Links, quotes, data>
 
 ### Finding 2
@@ -95,6 +97,53 @@ Project: <project name>
 
 ## Open Questions
 <What we still don't know>
+
+## Verification Status
+- **Status:** draft | verified | contested
+- **Confidence:** high | medium | low
+- **Needs deeper verification:** <list specific claims that need live testing or real-world validation>
+- **Dependent on:** <IDs of upstream claims this depends on, e.g. ["infra-001", "design-002"]>
+```
+
+### Claim ID and Dependency Tracking
+
+Every research output is a **claim** that may be depended upon by downstream work
+(experiments, engineering tasks, other research). Inspired by Ralph-to-Ralph's
+`dependent_on` pattern:
+
+1. Assign an `id` to every research output (e.g., `ugc-claim-001`)
+2. List upstream claims this depends on in `dependent_on` (3-5 max)
+3. Mark `verification_status`: `draft` (untested), `verified` (tested), `contested` (contradicted)
+
+This lets Kairos experiments and QA tasks know which upstream claims to re-verify together.
+
+### Verification Log (QA Hints)
+
+After completing research, append to the project's verification log so reviewers
+know what was covered and what needs live testing:
+
+`~/.hermes/caduceus/projects/<project>/verification-log.json`
+
+```json
+[
+  {
+    "claim_id": "ugc-claim-001",
+    "iteration": 1,
+    "sources_consulted": ["resend.com docs", "mailgun pricing page", "aws ses pricing"],
+    "verification_approach": "docs extraction + pricing comparison",
+    "confidence": "high",
+    "needs_deeper_verification": [
+      "Real email delivery rates unknown — docs don't disclose spam rates",
+      "API rate limits: need live testing with actual volume"
+    ],
+    "verified_by": "researcher",
+    "verified_at": "YYYY-MM-DD"
+  }
+]
+```
+
+This is the research equivalent of Ralph-to-Ralph's `qa-hints.json` — it tells
+the Kairos or QA agent what was tested and what needs live/real-world verification.
 ```
 
 ## Quality Standards
