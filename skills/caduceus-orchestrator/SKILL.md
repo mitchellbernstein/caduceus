@@ -84,6 +84,52 @@ User → "run the researcher on the UGC project"
 | monitor | caduceus-monitor | Health checks, notifications, heartbeats |
 | themis | caduceus-themis | GSD-style project onboarding |
 | kairos | caduceus-kairos | Bounded autonomous experimentation |
+| cloner | caduceus-cloner | Autonomous SaaS cloning — URL → PRD → implemented clone + QA |
+
+## Caduceus Cloner (Ralph-to-Ralph Workflow)
+
+`caduceus-cloner` is a three-phase autonomous pipeline (Inspect → Build → QA) inspired by
+Ralph-to-Ralph (Ralphthon Seoul 2026 winner). Give it any SaaS URL and get back a fully
+functional, tested clone.
+
+### Launch a Clone
+
+```bash
+cd ~/Documents/GitHub/caduceus_private
+./scripts/caduceus-cloner/start-cloner.sh https://target-saas.com [project-name]
+```
+
+Or via orchestrator — the cloner watchdog runs all three phases with bounded retries:
+
+```
+1. Phase 1: Inspect (Claude + Ever CLI)
+   → prd.json (50+ features), build-spec.md, screenshots, docs
+2. Phase 2: Build (Claude, TDD)
+   → One feature per invocation, test-first, bounded 10 restarts
+3. Phase 3: QA (Claude + Ever CLI)
+   → One feature per invocation, vs original product, bounded 10 restarts
+4. Build→QA cycles: up to 5x if bugs found
+5. Git cron_backup after every iteration
+```
+
+### How the Cloner Works
+
+- **Prerequisite skill**: `caduceus-browser` (Ever CLI + Playwright)
+- **Phase scripts**: `scripts/caduceus-cloner/inspect-cloner.sh`, `build-cloner.sh`, `qa-cloner.sh`
+- **Orchestrator**: `scripts/caduceus-cloner/cloner-watchdog.sh`
+- **Entry point**: `scripts/caduceus-cloner/start-cloner.sh`
+
+### Prerequisites
+- `ever` CLI installed (`npm install -g ever-cli`)
+- `npx playwright install chromium`
+- `claude` CLI (`npm install -g @anthropic-ai/claude-code`)
+- AWS credentials configured for cloud provisioning
+
+### Monitoring
+- `progress.json` updated after every iteration
+- `prd.json` with `passes` field tracks feature completion
+- `qa-report.json` with per-feature test results + bugs
+- `cloner-watchdog-*.log` in project dir
 
 ## Kairos (Experiment) Tasks
 
