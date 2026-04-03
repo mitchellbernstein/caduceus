@@ -1,0 +1,29 @@
+# =============================================================================
+# Caduceus x Hermes Integration
+# Add this to your ~/.hermes/config.yaml or use as a reference
+# =============================================================================
+
+# MCP Servers — QMD exposed as a native tool
+mcp_servers:
+  caduceus_qmd:
+    command: python
+    args: ["-m", "caduceus_qmd_mcp"]
+    env:
+      QMD_PATH: ~/.hermes/caduceus
+
+# Memory — use QMD as the pluggable memory provider
+memory:
+  provider: qmd
+  qmd_path: ~/.hermes/caduceus
+  collection: memory
+  char_limit: 4000
+
+# =============================================================================
+# Hermes Update: cron-approval-mode
+# Default for Caduceus cron jobs: deny dangerous commands (don't auto-approve)
+# Set to "approve" only if you want cron jobs to auto-approve everything
+# =============================================================================
+approvals:
+  mode: manual
+  cron_mode: deny   # "deny" = block dangerous commands in cron, let agent adapt
+                    # "approve" = auto-approve all (previous behavior)
