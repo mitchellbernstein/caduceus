@@ -1,0 +1,24 @@
+[Unit]
+Description=Caduceus API Server — FastAPI control layer
+After=network.target caduceus-daemon.service
+Wants=caduceus-daemon.service
+
+[Service]
+Type=simple
+User=%u
+WorkingDirectory=%h/Documents/GitHub/caduceus_private/scripts/caduceus-api
+ExecStart=/usr/bin/env python3 %h/Documents/GitHub/caduceus_private/scripts/caduceus-api/server.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:%h/.hermes/caduceus/logs/api-stdout.log
+StandardError=append:%h/.hermes/caduceus/logs/api-stderr.log
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.hermes/caduceus/
+Environment="PYTHONUNBUFFERED=1"
+Environment="CADUCEUS_API_PORT=8765"
+
+[Install]
+WantedBy=default.target

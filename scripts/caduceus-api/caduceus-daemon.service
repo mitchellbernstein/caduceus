@@ -1,0 +1,31 @@
+[Unit]
+Description=Caduceus Mission Daemon — autonomous business runner
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=%u
+WorkingDirectory=%h/Documents/GitHub/caduceus_private/scripts/caduceus-api
+ExecStart=/usr/bin/env python3 %h/Documents/GitHub/caduceus_private/scripts/caduceus-api/daemon.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:%h/.hermes/caduceus/logs/daemon-stdout.log
+StandardError=append:%h/.hermes/caduceus/logs/daemon-stderr.log
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.hermes/caduceus/
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+# Auto-restart on crash
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Install]
+WantedBy=default.target

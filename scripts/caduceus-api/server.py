@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -49,11 +50,22 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restrict to localhost in production
-    allow_credentials=True,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=False,  # no cookies/auth tokens in API requests
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Store Instances (needed by Phase 1-3 compat endpoints) ─────────────────────
+
+from caduceus_api.models import (
+    Mission, MissionStore, MissionStatus, MissionType,
+    Task, TaskStatus, AutonomyMode,
+)
+from caduceus_api.integrations import IntegrationManager, SUPPORTED_PROVIDERS
+
+mission_store = MissionStore()
+integration_manager = IntegrationManager()
 
 # ─── Pydantic Models ───────────────────────────────────────────────────────────
 
@@ -111,78 +123,88 @@ async def health():
         "caduceus_base": str(CADUCEUS_BASE),
     }
 
-# ─── Missions ──────────────────────────────────────────────────────────────────
+# ─── Missions (Phase 1-3 legacy compat — now unified with MissionStore) ─────────
 
-@app.get("/missions", response_model=list[MissionStatus])
-async def list_missions(project: Optional[str] = None):
-    """List all missions, optionally filtered by project."""
-    missions = []
-    base = PROJECTS_DIR / project if project else PROJECTS_DIR
-    if not base.exists():
-        return missions
+@app.get("/missions", response_model=list)
+async def list_missions(status: Optional[str] = None):
+    """List all missions using the unified MissionStore."""
+    missions = mission_store.list()
+    if status:
+        missions = [m for m in missions if m.status.value == status]
+    return [{
+        "id": m.id,
+        "name": m.name,
+        "mission_type": m.mission_type.value,
+        "status": m.status.value,
+        "iterations": m.iterations,
+        "last_heartbeat": m.last_heartbeat,
+        "autonomy_mode": m.autonomy_mode.value,
+        "budget_monthly_cents": m.budget_monthly_cents,
+        "budget_unlimited": m.budget_unlimited,
+        "created_at": m.created_at,
+        "progress_pct": _get_progress_pct(m.id),
+    } for m in missions]
 
-    for proj_dir in base.iterdir():
-        if not proj_dir.is_dir():
-            continue
-        progress_file = proj_dir / "progress.json"
-        if progress_file.exists():
-            try:
-                data = json.loads(progress_file.read_text())
-                missions.append(MissionStatus(
-                    project=proj_dir.name,
-                    mission=data.get("mission", "unknown"),
-                    status=data.get("status", "unknown"),
-                    started_at=data.get("started_at"),
-                    last_activity=data.get("last_activity"),
-                    iterations=data.get("iterations", 0),
-                    current_step=data.get("current_step"),
-                    progress_pct=data.get("progress_pct"),
-                ))
-            except Exception:
-                pass
-    return missions
+@app.get("/missions/{mission_id}", response_model=dict)
+async def get_mission(mission_id: str):
+    """Get full status of a specific mission including progress, integrations, and tasks."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, f"Mission not found: {mission_id}")
+    progress = mission_store.get_progress(mission_id)
+    integrations = integration_manager.list(mission_id)
+    tasks = mission_store.get_tasks(mission_id)
+    return {
+        **asdict(m),
+        "progress": progress,
+        "progress_pct": _get_progress_pct(mission_id),
+        "integrations": integrations,
+        "tasks": [asdict(t) for t in tasks],
+    }
 
-@app.get("/missions/{project}", response_model=MissionStatus)
-async def get_mission(project: str):
-    """Get status of a specific mission."""
-    progress_file = PROJECTS_DIR / project / "progress.json"
-    if not progress_file.exists():
-        raise HTTPException(404, f"Mission not found: {project}")
-    data = json.loads(progress_file.read_text())
-    return MissionStatus(project=project, **data)
-
-@app.post("/missions/{project}/pause")
-async def pause_mission(project: str):
+@app.post("/missions/{mission_id}/pause")
+async def pause_mission(mission_id: str, reason: str = Query("")):
     """Pause a running mission."""
-    progress_file = PROJECTS_DIR / project / "progress.json"
-    if progress_file.exists():
-        data = json.loads(progress_file.read_text())
-        data["status"] = "paused"
-        data["last_activity"] = datetime.now().isoformat()
-        progress_file.write_text(json.dumps(data, indent=2))
-    return {"status": "paused", "project": project}
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    m.status = MissionStatus.PAUSED
+    mission_store.update(m)
+    mission_store.save_progress(mission_id, {"status": "paused", "pause_reason": reason})
+    return {"status": "paused", "mission_id": mission_id, "reason": reason}
 
-@app.post("/missions/{project}/resume")
-async def resume_mission(project: str):
+@app.post("/missions/{mission_id}/resume")
+async def resume_mission(mission_id: str):
     """Resume a paused mission."""
-    progress_file = PROJECTS_DIR / project / "progress.json"
-    if progress_file.exists():
-        data = json.loads(progress_file.read_text())
-        data["status"] = "running"
-        data["last_activity"] = datetime.now().isoformat()
-        progress_file.write_text(json.dumps(data, indent=2))
-    return {"status": "running", "project": project}
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    m.status = MissionStatus.ACTIVE
+    mission_store.update(m)
+    mission_store.save_progress(mission_id, {"status": "running"})
+    return {"status": "running", "mission_id": mission_id}
 
-@app.post("/missions/{project}/abort")
-async def abort_mission(project: str):
+@app.post("/missions/{mission_id}/abort")
+async def abort_mission(mission_id: str):
     """Abort a mission."""
-    progress_file = PROJECTS_DIR / project / "progress.json"
-    if progress_file.exists():
-        data = json.loads(progress_file.read_text())
-        data["status"] = "failed"
-        data["last_activity"] = datetime.now().isoformat()
-        progress_file.write_text(json.dumps(data, indent=2))
-    return {"status": "aborted", "project": project}
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    m.status = MissionStatus.FAILED
+    mission_store.update(m)
+    mission_store.save_progress(mission_id, {"status": "failed"})
+    return {"status": "aborted", "mission_id": mission_id}
+
+
+def _get_progress_pct(mission_id: str) -> Optional[float]:
+    try:
+        tasks = mission_store.get_tasks(mission_id)
+        if not tasks:
+            return None
+        completed = sum(1 for t in tasks if t.status == TaskStatus.COMPLETED)
+        return round(completed / len(tasks) * 100, 1)
+    except Exception:
+        return None
 
 # ─── QMD ─────────────────────────────────────────────────────────────────────
 
@@ -476,6 +498,266 @@ async def dashboard():
     </ul>
     </body></html>
     """)
+
+# ─── Missions (Phase 4: local-first business runner) ────────────────────────────
+
+from caduceus_api.credits import CreditsStore
+
+credits_store = CreditsStore()
+
+@app.post("/missions", response_model=dict)
+async def create_mission(
+    name: str = Query(...),
+    mission_type: str = Query("start_business"),
+    description: str = Query(""),
+    user_idea: Optional[str] = Query(None),
+    autonomy_mode: str = Query("checkpoint"),
+    budget_monthly_cents: int = Query(0),
+):
+    """Create a new mission (business unit)."""
+    m = Mission(
+        name=name,
+        mission_type=MissionType(mission_type),
+        description=description,
+        user_idea=user_idea,
+        autonomy_mode=AutonomyMode(autonomy_mode),
+        budget_monthly_cents=budget_monthly_cents,
+    )
+    mission_store.create(m)
+    return {"status": "created", "mission_id": m.id, "name": m.name}
+
+@app.post("/missions/{mission_id}/heartbeat")
+async def mission_heartbeat(mission_id: str):
+    """Update mission heartbeat — called by the daemon to show it's alive."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    m.last_heartbeat = datetime.now().isoformat()
+    mission_store.update(m)
+    progress = mission_store.get_progress(mission_id)
+    return {"alive": True, "mission_id": mission_id, "last_heartbeat": m.last_heartbeat}
+
+@app.post("/missions/{mission_id}/progress")
+async def save_mission_progress(mission_id: str, progress: dict = Query(...)):
+    """Save progress state for a mission."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    mission_store.save_progress(mission_id, progress)
+    return {"status": "saved", "mission_id": mission_id}
+
+# ── Integrations ──
+
+@app.get("/missions/{mission_id}/integrations")
+async def list_integrations(mission_id: str):
+    """List all configured integrations (redacted — no secrets)."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    return {"integrations": integration_manager.list(mission_id)}
+
+@app.post("/missions/{mission_id}/integrations")
+async def add_integration(
+    mission_id: str,
+    provider: str = Query(...),
+    key_value: str = Query(...),
+    label: str = Query(""),
+):
+    """Add an API key for a provider. Value is encrypted at rest."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    integration = integration_manager.add(mission_id, provider, key_value, label)
+    return {"status": "added", **integration.redact()}
+
+@app.delete("/missions/{mission_id}/integrations/{integration_id}")
+async def delete_integration(mission_id: str, integration_id: str):
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    ok = integration_manager.delete(mission_id, integration_id)
+    if not ok:
+        raise HTTPException(404, "Integration not found")
+    return {"status": "deleted", "integration_id": integration_id}
+
+@app.get("/integrations/providers")
+async def list_providers():
+    """List all supported integration providers."""
+    return {"providers": SUPPORTED_PROVIDERS}
+
+# ── Credits / Billing ──
+
+@app.get("/missions/{mission_id}/credits")
+async def get_mission_credits(mission_id: str):
+    """Get credits usage and budget status for a mission."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    usage = credits_store.get_mission_usage(mission_id)
+    budget_status = credits_store.get_budget_status(mission_id, m.budget_monthly_cents)
+    return {
+        "mission_id": mission_id,
+        "usage": usage,
+        "budget": budget_status,
+    }
+
+@app.get("/credits/all")
+async def get_all_credits():
+    """Get aggregated credits usage across all missions."""
+    return credits_store.get_all_usage()
+
+@app.post("/missions/{mission_id}/credits/record")
+async def record_credits(
+    mission_id: str,
+    provider: str = Query(...),
+    model: str = Query("default"),
+    input_tokens: int = Query(0),
+    output_tokens: int = Query(0),
+    session_id: str = Query(""),
+    task_id: str = Query(""),
+    success: bool = Query(True),
+):
+    """Record an API call's token usage for billing."""
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    cost = credits_store.record_api_call(
+        mission_id=mission_id,
+        provider=provider,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        session_id=session_id,
+        task_id=task_id,
+        success=success,
+    )
+    return {"status": "recorded", "estimated_cost_usd": round(cost, 6)}
+
+# ── Tasks ──
+
+@app.get("/missions/{mission_id}/tasks", response_model=list)
+async def list_tasks(mission_id: str, status: Optional[str] = None):
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    tasks = mission_store.get_tasks(mission_id)
+    if status:
+        tasks = [t for t in tasks if t.status.value == status]
+    return [asdict(t) for t in tasks]
+
+@app.post("/missions/{mission_id}/tasks", response_model=dict)
+async def create_task(
+    mission_id: str,
+    title: str = Query(...),
+    description: str = Query(""),
+    priority: str = Query("medium"),
+    assignee_skill: Optional[str] = Query(None),
+    checkpoint_required: bool = Query(False),
+):
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    task = Task(
+        title=title,
+        description=description,
+        priority=priority,
+        assignee_skill=assignee_skill,
+        checkpoint_required=checkpoint_required,
+        status=TaskStatus.BACKLOG,
+    )
+    mission_store.create_task(mission_id, task)
+    return {"status": "created", "task_id": task.id}
+
+@app.patch("/missions/{mission_id}/tasks/{task_id}", response_model=dict)
+async def update_task(
+    mission_id: str,
+    task_id: str,
+    status: Optional[str] = Query(None),
+    title: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
+):
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    tasks = mission_store.get_tasks(mission_id)
+    task = next((t for t in tasks if t.id == task_id), None)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    if status:
+        task.status = TaskStatus(status)
+        if status == "in_progress" and not task.started_at:
+            task.started_at = datetime.now().isoformat()
+        if status in ("completed", "cancelled"):
+            task.completed_at = datetime.now().isoformat()
+    if title:
+        task.title = title
+    if description:
+        task.description = description
+    mission_store.save_task(mission_id, task)
+    return {"status": "updated", **asdict(task)}
+
+# ── Onboarding Flow ──
+
+@app.post("/onboarding/missions")
+async def onboarding_create_mission(
+    mission_type: str = Query(...),
+    user_idea: Optional[str] = Query(None),
+    autonomy_mode: str = Query("checkpoint"),
+    budget_cents: int = Query(0),
+):
+    """
+    Onboarding: create a new mission from the onboarding flow.
+
+    mission_type: "raise_funding" | "start_business" | "scale_business"
+    user_idea: None = let Caduceus pick
+    """
+    if mission_type == "raise_funding":
+        name = "Funding Campaign"
+        description = "Raising capital — pitch deck, financials, investor research"
+    elif mission_type == "scale_business":
+        name = "Scale Operation"
+        description = "Scaling an existing business"
+    else:
+        name = user_idea or "Let Caduceus pick"
+        description = "Building and running a micro-SaaS business"
+
+    m = Mission(
+        name=name,
+        mission_type=MissionType(mission_type),
+        description=description,
+        user_idea=user_idea,
+        autonomy_mode=AutonomyMode(autonomy_mode),
+        budget_monthly_cents=budget_cents,
+    )
+    mission_store.create(m)
+
+    # If raising funding, set up default tasks
+    if mission_type == "raise_funding":
+        for i, (title, desc) in enumerate([
+            ("Research similar fundraises", "Study comparable companies' pitch decks and round sizes"),
+            ("Build financial model", "Create 3-year projection model"),
+            ("Write pitch deck", "Create 10-slide investor deck"),
+            ("Research target investors", "Find VCs and angels who invest in this space"),
+            ("Prepare data room", "Organize metrics, docs, cap table"),
+        ]):
+            t = Task(title=title, description=desc, priority="high" if i == 0 else "medium")
+            mission_store.create_task(m.id, t)
+
+    # If starting a business, set up the business-building workflow
+    if mission_type == "start_business":
+        for i, (title, desc, skill) in enumerate([
+            ("Discover: what should I build?", "Research forum posts, analyze competitors, find unmet needs", "caduceus-researcher"),
+            ("Decide: which idea is best?", "Evaluate ideas against market size, competition, feasibility", "caduceus-kairos"),
+            ("Build the product", "Build the MVP — app, integrations, landing page", "caduceus-engineer"),
+            ("Write the copy", "Landing page, onboarding, email sequences", "caduceus-writer"),
+            ("Launch publicly", "Submit to Product Hunt, Hacker News, relevant communities", "caduceus-monitor"),
+        ]):
+            t = Task(title=title, description=desc, assignee_skill=skill, priority="high" if i == 0 else "medium")
+            mission_store.create_task(m.id, t)
+
+    return {
+        "status": "created",
+        "mission_id": m.id,
+        "name": m.name,
+        "mission_type": m.mission_type.value,
+        "next_step": "integrations",
+    }
+
 
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
