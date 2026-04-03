@@ -82,6 +82,9 @@ Future iterations read prior traces to understand failure modes.
 | `missing_verification` | Didn't check the result before committing |
 | `environment_issue` | External factor (network, tool failure, etc.) |
 | `silent_failure` | Agent thought it succeeded but output was wrong |
+| `missing_install_step` | Built something but never installed/copied it to the runtime location |
+| `path_mismatch` | Registered in index.json but points to wrong location (dev vs runtime) |
+| `curl_pipe_python` | curl | python3 pipe-to-interpreter pattern triggering security scan |
 
 ## Emitting Traces
 

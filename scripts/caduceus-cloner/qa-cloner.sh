@@ -110,7 +110,7 @@ try:
 except: print('No qa-hints.json found.')
 " 2>/dev/null)
 
-    result=$(timeout 1200 claude -p --dangerously-skip-permissions --model claude-opus-4-6 \
+    result=$(python3 $CADUCEUS_PRIVATE/scripts/run-prompt.py \
 "@$CLONER_SKILL/references/qa-prompt.md @$CLONER_SKILL/references/pre-setup.md @$PROJECT_DIR/qa-report.json @$CLONER_SKILL/references/ever-cli-ref.md
 
 == FEATURE TO TEST ==

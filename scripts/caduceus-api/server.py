@@ -196,6 +196,110 @@ async def abort_mission(mission_id: str):
     return {"status": "aborted", "mission_id": mission_id}
 
 
+# ─── Steering Endpoints ───────────────────────────────────────────────────────
+
+class SteeringRequest(BaseModel):
+    """Request body for /steer endpoint."""
+    inject_tasks: list[str] = []
+    directive_override: Optional[str] = None
+    pause_reason: Optional[str] = None
+    abort: bool = False
+
+
+@app.post("/missions/{mission_id}/steer")
+async def steer_mission(mission_id: str, steering: SteeringRequest):
+    """
+    Inject tasks or override directive while a mission is running.
+    Writes to ~/.hermes/caduceus/missions/{id}/steering.json for the daemon to pick up.
+
+    inject_tasks: list of task titles to inject
+    directive_override: temporary directive to apply for this cycle
+    pause_reason: if set, pauses the mission with this reason
+    abort: if true, aborts the mission
+    """
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+
+    steering_data = {
+        "inject_tasks": steering.inject_tasks,
+        "directive_override": steering.directive_override,
+        "pause_reason": steering.pause_reason,
+        "abort": steering.abort,
+    }
+
+    # Persist to disk
+    mission_store.save_steering(mission_id, steering_data)
+
+    # If abort requested, do it now
+    if steering.abort:
+        m.status = MissionStatus.FAILED
+        mission_store.update(m)
+        mission_store.save_progress(mission_id, {"status": "failed", "reason": "abort via steering"})
+        return {"status": "steered", "mission_id": mission_id, "action": "aborted"}
+
+    # If pause requested
+    if steering.pause_reason:
+        m.status = MissionStatus.PAUSED
+        mission_store.update(m)
+        mission_store.save_progress(mission_id, {"status": "paused", "pause_reason": steering.pause_reason})
+        return {"status": "steered", "mission_id": mission_id, "action": "paused", "reason": steering.pause_reason}
+
+    return {
+        "status": "steered",
+        "mission_id": mission_id,
+        "inject_tasks": steering.inject_tasks,
+        "directive_override": steering.directive_override,
+    }
+
+
+@app.get("/missions/{mission_id}/flywheel-state")
+async def get_flywheel_state(mission_id: str):
+    """
+    Get the current flywheel state for a mission.
+    Returns phase, iteration count, loop state, and steering overrides.
+    """
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+
+    flywheel_state = mission_store.get_flywheel_state(mission_id)
+    steering = mission_store.get_steering(mission_id)
+
+    return {
+        "mission_id": mission_id,
+        "flywheel_phase": m.flywheel_phase,
+        "flywheel_iteration": m.flywheel_iteration,
+        "loop_state": m.loop_state,
+        "steering_overrides": m.steering_overrides,
+        "has_launched": m.loop_state.get("has_launched", False) if m.loop_state else False,
+        "launch_date": m.loop_state.get("launch_date") if m.loop_state else None,
+        "pending_steering": steering,
+        "active_missions": [
+            {
+                "id": x.id,
+                "name": x.name,
+                "flywheel_phase": x.flywheel_phase,
+                "status": x.status.value,
+            }
+            for x in mission_store.list() if x.status.value == "active"
+        ],
+    }
+
+
+@app.get("/missions/{mission_id}/flywheel-phase")
+async def get_flywheel_phase(mission_id: str):
+    """Get just the current flywheel phase."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    return {
+        "mission_id": mission_id,
+        "flywheel_phase": m.flywheel_phase,
+        "flywheel_iteration": m.flywheel_iteration,
+    }
+
+
 def _get_progress_pct(mission_id: str) -> Optional[float]:
     try:
         tasks = mission_store.get_tasks(mission_id)

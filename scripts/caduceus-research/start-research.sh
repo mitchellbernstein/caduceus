@@ -67,7 +67,7 @@ MAX_ITERATIONS=10
 while true; do
     echo "--- Research iteration $ITERATION ---"
 
-    result=$(timeout 1200 claude -p --dangerously-skip-permissions --model claude-opus-4-6 \
+    result=$(python3 $CADUCEUS_PRIVATE/scripts/run-prompt.py \
 "@$RESEARCH_PROMPT @$EVER_CLI_REF
 
 MARKET SPACE: $SPACE

@@ -144,6 +144,13 @@ class Mission:
     never_stop: list[str] = field(default_factory=list)
     requires_restart: list[str] = field(default_factory=list)
 
+    # Flywheel state (post-launch operating loop)
+    # Phases: discover -> decide -> build -> launch -> monitor -> respond -> iterate -> expand -> (loop to monitor)
+    flywheel_phase: str = "discover"  # discover|decide|build|launch|monitor|respond|iterate|expand
+    flywheel_iteration: int = 0       # how many times through the full flywheel loop
+    loop_state: dict = field(default_factory=dict)  # arbitrary phase-specific state
+    steering_overrides: dict = field(default_factory=dict)  # human-injected directives
+
     # Tracking
     iterations: int = 0
     last_heartbeat: Optional[str] = None
@@ -201,6 +208,10 @@ class MissionStore:
             "budget_monthly_cents": mission.budget_monthly_cents,
             "budget_unlimited": mission.budget_unlimited,
             "iterations": mission.iterations,
+            "flywheel_phase": mission.flywheel_phase,
+            "flywheel_iteration": mission.flywheel_iteration,
+            "loop_state": mission.loop_state,
+            "steering_overrides": mission.steering_overrides,
             "created_at": mission.created_at,
         })
         return mission
@@ -225,6 +236,10 @@ class MissionStore:
             budget_monthly_cents=data.get("budget_monthly_cents", 0),
             budget_unlimited=data.get("budget_unlimited", False),
             iterations=data.get("iterations", 0),
+            flywheel_phase=data.get("flywheel_phase", "discover"),
+            flywheel_iteration=data.get("flywheel_iteration", 0),
+            loop_state=data.get("loop_state", {}),
+            steering_overrides=data.get("steering_overrides", {}),
             created_at=data.get("created_at", ""),
         )
 
@@ -303,3 +318,46 @@ class MissionStore:
         task.mission_id = mission_id
         self.save_task(mission_id, task)
         return task
+
+    # ── Flywheel State ──────────────────────────────────────────────────────────
+
+    def get_flywheel_state(self, mission_id: str) -> dict:
+        """Get the full flywheel state for a mission."""
+        return _load_json(self.base / mission_id / "flywheel_state.json")
+
+    def save_flywheel_state(self, mission_id: str, phase: str, iteration: int, loop_state: dict):
+        """Save flywheel phase, iteration, and loop state."""
+        _save_json(self.base / mission_id / "flywheel_state.json", {
+            "flywheel_phase": phase,
+            "flywheel_iteration": iteration,
+            "loop_state": loop_state,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        # Also persist in the mission prd.json
+        m = self.get(mission_id)
+        if m:
+            m.flywheel_phase = phase
+            m.flywheel_iteration = iteration
+            m.loop_state = loop_state
+            self.update(m)
+
+    # ── Steering ───────────────────────────────────────────────────────────────
+
+    def get_steering(self, mission_id: str) -> dict:
+        """Read steering.json for human-injected tasks/directives."""
+        steering_file = self.base / mission_id / "steering.json"
+        if steering_file.exists():
+            return _load_json(steering_file)
+        return {}
+
+    def save_steering(self, mission_id: str, steering: dict):
+        """Save steering overrides (called by API server)."""
+        _save_json(self.base / mission_id / "steering.json", {
+            **steering,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        # Also update mission steering_overrides field
+        m = self.get(mission_id)
+        if m:
+            m.steering_overrides = steering
+            self.update(m)

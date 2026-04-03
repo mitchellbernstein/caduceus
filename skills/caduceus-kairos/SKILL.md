@@ -20,6 +20,11 @@ triggers:
   - "try (a |the )?approach"
   - "test (a |the )?idea"
   - "kairos"
+  - "self-improve"
+  - "fix gap"
+  - "diagnose"
+  - "audit system"
+  - "find failure"
 ---
 
 
@@ -32,6 +37,51 @@ track metrics, decide when to stop (early success or exhausts budget).
 **Kairos is NOT for tasks with a known path.** Use the Engineer or Researcher
 for that. Kairos is for tasks where we don't know the answer and need to
 find it through experimentation.
+
+## Ralph Self-Improvement Loop
+
+Kairos can inspect and fix Caduceus's own infrastructure — skills, scripts,
+daemons, and APIs. This is the highest-value use of the autonomous loop.
+
+**The pattern (proven 2026-04-03):**
+
+```
+1. Inspect: Read the skill/scripts that are failing
+2. Diagnose: Find the specific gap (not the symptom — the root cause)
+3. Fix: Write the patch directly — Kairos has file tools
+4. Commit: git add + commit in the same session
+5. Verify: Run the fixed component to confirm it works
+6. Report: <promise>COMPLETE</promise> with what was found and fixed
+```
+
+**Example diagnosis that worked (2026-04-03):**
+
+```
+Problem: Synthesized skills are registered but never loadable by Hermes
+Root cause: caduceus-skill-synth Step 5 writes to ~/.hermes/caduceus/skills/index.json
+            but NEVER copies the skill files to ~/.hermes/skills/
+Fix: Added cp -r step + absolute path in index.json + idempotent registration
+Commit: "fix(kairos): synthesized skills now copied to ~/.hermes/skills/ at registration"
+```
+
+**What to audit when Kairos runs on itself:**
+
+| Area | What to check | Common gaps |
+|---|---|---|
+| Skill synthesis | start-synth.sh + SKILL.md | Missing install step, wrong paths |
+| Hermes skills | ~/.hermes/skills/ vs caduceus_private | Registry drift |
+| API server | server.py endpoints | Missing error handling |
+| Dashboard | dashboard.html JS | Broken API calls |
+| Security | curl \| python3 patterns | Pipe-to-interpreter everywhere |
+| Daemon | cron_daemon.py | No progress.json read/write |
+
+**Rules for self-improvement:**
+
+1. Always commit the fix in the same session — don't defer
+2. Verify the fix works before outputting COMPLETE
+3. If the fix is complex (multi-file), do ONE file per iteration
+4. For skills: always install to ~/.hermes/skills/ AND update the registry
+5. For scripts: check for `timeout` command (macOS doesn't have it)
 
 ## Ralph-to-Ralph Influence
 

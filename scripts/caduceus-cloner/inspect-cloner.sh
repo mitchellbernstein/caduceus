@@ -39,7 +39,7 @@ for ((i=1; i<=ITERATIONS; i++)); do
     # Build context for this iteration
     PROGRESS_CTX=$(cat "$INSPECTProgress" 2>/dev/null || echo "")
 
-    result=$(timeout 1200 claude -p --dangerously-skip-permissions --model claude-opus-4-6 \
+    result=$(python3 $CADUCEUS_PRIVATE/scripts/run-prompt.py \
 "@$CLONER_SKILL/references/inspect-prompt.md @$CLONER_SKILL/references/ever-cli-ref.md @$CLONER_SKILL/references/pre-setup.md @$PRD @$INSPECTProgress
 
 TARGET URL: $TARGET_URL

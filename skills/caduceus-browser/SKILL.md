@@ -39,12 +39,17 @@ Both are used together in the caduceus-cloner workflow.
 ## Prerequisites
 
 ```bash
-# Install Ever CLI
-npm install -g @damianholroyd/ever-cli
-# or: npm install -g ever-cli
+# Install Ever CLI (Playwright-based, local implementation)
+cd ~/Documents/GitHub/caduceus_private/scripts/ever-cli
+npm install playwright
+npm link  # makes 'ever' available globally
 
-# Install Playwright
-npm install -g playwright
+# Install ever-server for persistent background browser sessions
+# (Required for multi-iteration inspection — browser stays open across calls)
+ln -sf ~/Documents/GitHub/caduceus_private/scripts/ever-cli/ever-server.js ~/local/bin/ever-server
+chmod +x ~/Documents/GitHub/caduceus_private/scripts/ever-cli/ever-server.js
+
+# Install Playwright Chromium (one-time)
 npx playwright install chromium
 ```
 
