@@ -84,6 +84,7 @@ User → "run the researcher on the UGC project"
 | monitor | caduceus-monitor | Health checks, notifications, heartbeats |
 | themis | caduceus-themis | GSD-style project onboarding |
 | kairos | caduceus-kairos | Bounded autonomous experimentation |
+| researcher | caduceus-researcher | Competitive space research — find top products, inspect them, produce insight doc |
 | cloner | caduceus-cloner | Autonomous SaaS cloning — URL → PRD → implemented clone + QA |
 
 ## Caduceus Cloner (Ralph-to-Ralph Workflow)

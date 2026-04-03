@@ -39,9 +39,19 @@ in API credits, ~4 hours fully autonomous on Resend.com.
 
 ## Usage
 
+### Research Mode (no building — just competitive insights)
 ```bash
 cd ~/Documents/GitHub/caduceus_private
-./scripts/caduceus-cloner/start-cloner.sh https://target-saas.com
+./scripts/caduceus-research/start-research.sh "email API platforms like Resend and Mailgun"
+./scripts/caduceus-research/start-research.sh "prayer and spiritual wellness apps"
+```
+This finds top 2-3 products in the space, inspects them via Ever CLI, and outputs
+`research/competitive-insight.md` + screenshots. Zero building — just research.
+
+### Full Clone Mode (inspect + build + QA)
+```bash
+cd ~/Documents/GitHub/caduceus_private
+./scripts/caduceus-cloner/start-cloner.sh https://target-saas.com [project-name]
 ```
 
 Or via the orchestrator:

@@ -1,18 +1,20 @@
 ---
-
 name: caduceus-researcher
-description: The researcher sub-agent — deep research, competitive analysis, paper review. Searches broadly, synthesizes findings, writes reports to QMD.
-version: 0.1.0
+
+description: The researcher sub-agent — deep research, competitive analysis, paper review, and market space investigation. Searches broadly, inspects live products via Ever CLI, synthesizes findings, writes reports to QMD.
+version: 0.2.0
 author: Studio Yeehaw LLC
 license: MIT
 platforms: [macos, linux, windows]
 metadata:
   hermes:
     tags: [research, analysis, competitive-intelligence, caduceus, theoi]
-    related_skills: [caduceus-orchestrator, caduceus-engineer, caduceus-writer]
+    related_skills: [caduceus-orchestrator, caduceus-engineer, caduceus-writer, caduceus-browser]
 triggers:
   - "research"
   - "investigate"
+  - "competitive research"
+  - "market research"
   - "analyze (the|a|this)?"
   - "competitive (analysis|landscape)"
   - "deep dive"
