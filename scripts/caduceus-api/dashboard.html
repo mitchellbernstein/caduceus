@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caduceus Control Center</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --muted: #666;
+      --accent: #6366f1;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header .badge { font-size: 11px; background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card h2 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+    .mission-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .mission-item:last-child { border-bottom: none; }
+    .mission-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .mission-dot.running { background: var(--green); }
+    .mission-dot.paused { background: var(--yellow); }
+    .mission-dot.failed { background: var(--red); }
+    .mission-info { flex: 1; }
+    .mission-name { font-weight: 500; font-size: 14px; }
+    .mission-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .mission-actions { display: flex; gap: 6px; }
+    button { background: var(--border); border: none; color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    button:hover { background: #333; }
+    button.danger { background: var(--red); }
+    .autonomy-slider { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+    input[type=range] { flex: 1; accent-color: var(--accent); }
+    .skills-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .skill-tag { background: var(--border); padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+    .checkpoint-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .checkpoint-item p { font-size: 13px; margin-bottom: 8px; }
+    .checkpoint-actions { display: flex; gap: 8px; }
+    .checkpoint-actions button.approve { background: var(--green); }
+    .checkpoint-actions button.reject { background: var(--red); }
+    .qmd-search { display: flex; gap: 8px; margin-bottom: 12px; }
+    .qmd-search input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+    .qmd-result { background: var(--bg); border-radius: 6px; padding: 8px; margin-bottom: 6px; font-size: 12px; border-left: 2px solid var(--accent); }
+    .qmd-result .path { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    .status-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 24px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab { padding: 6px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--muted); }
+    .tab.active { background: var(--accent); color: white; }
+    .section { display: none; }
+    .section.active { display: block; }
+    select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 6px; width: 100%; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Caduceus Control Center</h1>
+  <span class="badge">Phase 2</span>
+  <span id="status" style="margin-left:auto;font-size:12px;color:var(--muted)">Connecting...</span>
+</header>
+
+<div class="grid">
+  <!-- Missions -->
+  <div class="card">
+    <h2>Missions</h2>
+    <div id="missions-list">Loading...</div>
+  </div>
+
+  <!-- Autonomy Mode -->
+  <div class="card">
+    <h2>Autonomy Mode</h2>
+    <select id="project" onchange="loadDirective(this.value)">
+      <option value="">Select project...</option>
+    </select>
+    <div class="autonomy-slider">
+      <span style="font-size:11px;color:var(--muted)">Manual</span>
+      <input type="range" id="autonomy" min="1" max="4" value="2" onchange="setAutonomy(this.value)">
+      <span style="font-size:11px;color:var(--muted)">Full Auto</span>
+    </div>
+    <div class="slider-labels">
+      <span>Manual</span><span>Advisory</span><span>Checkpoint</span><span>Full Auto</span>
+    </div>
+    <div id="autonomy-status" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+  </div>
+
+  <!-- Skills -->
+  <div class="card">
+    <h2>Skills <span id="skill-count" style="color:var(--muted)"></span></h2>
+    <div id="skills-list" class="skills-list">Loading...</div>
+  </div>
+
+  <!-- Checkpoints -->
+  <div class="card">
+    <h2>Pending Checkpoints</h2>
+    <div id="checkpoints-list">No pending checkpoints.</div>
+  </div>
+
+  <!-- QMD -->
+  <div class="card">
+    <h2>QMD Knowledge Base</h2>
+    <div class="qmd-search">
+      <input type="text" id="qmd-query" placeholder="Search..." onkeydown="if(event.key==='Enter')qmdSearch()">
+      <button onclick="qmdSearch()">Search</button>
+    </div>
+    <div id="qmd-results">Enter a query above.</div>
+  </div>
+
+  <!-- Sessions -->
+  <div class="card">
+    <h2>Hermes Sessions</h2>
+    <div id="sessions-list" style="max-height:300px;overflow-y:auto;">Loading...</div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span>Caduceus API v0.1.0</span>
+  <span id="last-updated"></span>
+</div>
+
+<script>
+const API = 'http://localhost:8765';
+let currentProject = '';
+
+async function api(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function init() {
+  try {
+    const h = await api('/health');
+    document.getElementById('status').textContent = `Online — ${new Date(h.timestamp).toLocaleTimeString()}`;
+  } catch(e) {
+    document.getElementById('status').textContent = 'Offline — start server first';
+    document.getElementById('status').style.color = 'var(--red)';
+    return;
+  }
+  loadMissions(); loadSkills(); loadCheckpoints(); loadSessions(); loadProjects();
+  setInterval(() => { loadMissions(); loadCheckpoints(); }, 10000);
+}
+
+async function loadMissions() {
+  try {
+    const missions = await api('/missions');
+    const el = document.getElementById('missions-list');
+    el.innerHTML = !missions.length
+      ? '<div style="color:var(--muted);font-size:13px">No active missions.</div>'
+      : missions.map(m => `
+        <div class="mission-item">
+          <div class="mission-dot ${m.status}"></div>
+          <div class="mission-info">
+            <div class="mission-name">${m.project}</div>
+            <div class="mission-meta">${m.status} — ${m.iterations||0} iters${m.current_step?' — '+m.current_step:''}</div>
+          </div>
+          <div class="mission-actions">
+            ${m.status==='running'?'<button onclick="pauseMission(\''+m.project+'\')">Pause</button>':''}
+            ${m.status==='paused'?'<button onclick="resumeMission(\''+m.project+'\')">Resume</button>':''}
+            <button class="danger" onclick="abortMission(\''+m.project+'\')">Abort</button>
+          </div>
+        </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadSkills() {
+  try {
+    const s = await api('/skills');
+    document.getElementById('skill-count').textContent = `(${s.length})`;
+    document.getElementById('skills-list').innerHTML = s.map(sk =>
+      `<span class="skill-tag" title="${sk.description}">${sk.name.replace('caduceus-','')}</span>`
+    ).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadCheckpoints() {
+  try {
+    const cps = await api('/checkpoints?status=pending');
+    const el = document.getElementById('checkpoints-list');
+    el.innerHTML = !cps.length
+      ? '<div style="color:var(--muted);font-size:13px">No pending checkpoints.</div>'
+      : cps.map(c => `
+        <div class="checkpoint-item">
+          <p><strong>${c.project}:</strong> ${c.decision}</p>
+          <div class="checkpoint-actions">
+            <button class="approve" onclick="resolveCheckpoint('${c.id}','approve')">Approve</button>
+            <button class="reject" onclick="resolveCheckpoint('${c.id}','reject')">Reject</button>
+          </div>
+        </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadSessions() {
+  try {
+    const { sessions } = await api('/hermes/sessions');
+    document.getElementById('sessions-list').innerHTML = !sessions.length
+      ? '<div style="color:var(--muted)">No sessions.</div>'
+      : sessions.map(s => `<div class="mission-item"><div class="mission-info"><div class="mission-name">${s.session_id}</div><div class="mission-meta">${s.message_count} msgs — ${s.last_modified}</div></div></div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadProjects() {
+  try {
+    const missions = await api('/missions');
+    const sel = document.getElementById('project');
+    missions.forEach(m => { const o = document.createElement('option'); o.value = m.project; o.textContent = m.project; sel.appendChild(o); });
+  } catch(e) { console.error(e); }
+}
+
+async function loadDirective(p) {
+  if (!p) return;
+  currentProject = p;
+  try {
+    const d = await api('/directives/' + p);
+    const m = { full_auto: 4, checkpoint: 3, advisory: 2, manual: 1 };
+    document.getElementById('autonomy').value = m[d.autonomy_mode] || 2;
+    document.getElementById('autonomy-status').textContent = 'Mode: ' + d.autonomy_mode;
+  } catch(e) { console.error(e); }
+}
+
+async function setAutonomy(v) {
+  const mode = { 1: 'manual', 2: 'advisory', 3: 'checkpoint', 4: 'full_auto' }[v];
+  if (!currentProject) { alert('Select a project first'); return; }
+  try { await api(`/directives/${currentProject}/mode?mode=${mode}`); document.getElementById('autonomy-status').textContent = 'Mode: ' + mode; }
+  catch(e) { alert('Failed: ' + e); }
+}
+
+async function qmdSearch() {
+  const q = document.getElementById('qmd-query').value;
+  if (!q) return;
+  try {
+    const { results } = await api('/qmd/search?q=' + encodeURIComponent(q));
+    const el = document.getElementById('qmd-results');
+    el.innerHTML = !results.length ? 'No results.'
+      : results.slice(0, 5).map(r => `<div class="qmd-result"><div class="path">${r.path}</div><div>${r.snippet||''}</div></div>`).join('');
+  } catch(e) { document.getElementById('qmd-results').innerHTML = 'Search failed.'; }
+}
+
+async function pauseMission(p) { await api('/missions/' + p + '/pause'); loadMissions(); }
+async function resumeMission(p) { await api('/missions/' + p + '/resume'); loadMissions(); }
+async function abortMission(p) { if (confirm('Abort ' + p + '?')) { await api('/missions/' + p + '/abort'); loadMissions(); } }
+async function resolveCheckpoint(id, a) { await api('/checkpoints/' + id + '/' + a); loadCheckpoints(); }
+
+init();
+document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+</script>
+</body>
+</html>
