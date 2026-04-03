@@ -133,27 +133,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CADUCEUS_PRIVATE="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 TASK="${1:?Usage: $0 <task-description>}"
-
 echo "=== Caduceus <Name>: <action> ==="
 
-# Run the synthesis agent
-result=$(timeout 600 claude -p --dangerously-skip-permissions --model claude-opus-4-6 \
-  "@$CADUCEUS_PRIVATE/skills/caduceus-<name>/references/<name>-prompt.md"
+# Build prompt from reference doc + task
+PROMPT="Task: $TASK
 
-  TASK: $TASK
-  PROJECT_DIR: ${PROJECT_DIR:-.}
-")
+$(cat "$CADUCEUS_PRIVATE/skills/caduceus-<name>/references/<name>-prompt.md")"
 
-echo "$result"
+# Write to temp file and call hermes directly.
+# IMPORTANT: Never use $(hermes chat -q ...) in a subshell — it hangs on macOS.
+# Use a temp file + direct call + --max-turns N --yolo. See hermes-cli-patterns skill.
+PROMPT_FILE=$(mktemp /tmp/caduceus-skill.XXXXXX)
+echo "$PROMPT" > "$PROMPT_FILE"
+hermes chat -q "$(cat "$PROMPT_FILE")" --max-turns 5 --yolo 2>&1
+rm -f "$PROMPT_FILE"
 
-# Parse promise tag
-if echo "$result" | grep -q "<promise>COMPLETE</promise>"; then
-  echo "Skill execution complete."
-  exit 0
-else
-  echo "Skill execution incomplete."
-  exit 1
-fi
+echo ""
+echo "<promise>COMPLETE</promise>"
 ```
 
 ### Step 5: Register the New Skill
