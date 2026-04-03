@@ -9,6 +9,8 @@ Exposes HTTP endpoints for:
 - Directive read/write (autonomy mode per project)
 - Checkpoint approvals
 - Hermes session control
+- Tasks with chat history
+- Inbox aggregation
 
 Same API for both local dashboard and remote paid tier.
 
@@ -22,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import re
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -50,13 +53,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=False,  # no cookies/auth tokens in API requests
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8765"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ─── Store Instances (needed by Phase 1-3 compat endpoints) ─────────────────────
+# ─── Store Instances ───────────────────────────────────────────────────────────
 
 from caduceus_api.models import (
     Mission, MissionStore, MissionStatus, MissionType,
@@ -69,7 +72,7 @@ integration_manager = IntegrationManager()
 
 # ─── Pydantic Models ───────────────────────────────────────────────────────────
 
-class MissionStatus(BaseModel):
+class MissionStatusPM(BaseModel):
     project: str
     mission: str
     status: str  # running | pending | completed | failed | paused
@@ -123,7 +126,19 @@ async def health():
         "caduceus_base": str(CADUCEUS_BASE),
     }
 
-# ─── Missions (Phase 1-3 legacy compat — now unified with MissionStore) ─────────
+# ─── Inbox ─────────────────────────────────────────────────────────────────────
+
+@app.get("/inbox")
+async def get_inbox(mission_id: Optional[str] = Query(None)):
+    """
+    Aggregate inbox: pending approvals + mission notifications.
+    
+    mission_id: if provided, only show items for that mission
+    """
+    inbox = mission_store.get_inbox(mission_id)
+    return inbox
+
+# ─── Missions ──────────────────────────────────────────────────────────────────
 
 @app.get("/missions", response_model=list)
 async def list_missions(status: Optional[str] = None):
@@ -162,6 +177,32 @@ async def get_mission(mission_id: str):
         "tasks": [asdict(t) for t in tasks],
     }
 
+@app.patch("/missions/{mission_id}")
+async def patch_mission(
+    mission_id: str,
+    name: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
+    autonomy_mode: Optional[str] = Query(None),
+    budget_monthly_cents: Optional[int] = Query(None),
+    budget_unlimited: Optional[bool] = Query(None),
+):
+    """Update mission name, description, or settings."""
+    m = mission_store.get(mission_id)
+    if not m:
+        raise HTTPException(404, "Mission not found")
+    if name is not None:
+        m.name = name
+    if description is not None:
+        m.description = description
+    if autonomy_mode is not None:
+        m.autonomy_mode = AutonomyMode(autonomy_mode)
+    if budget_monthly_cents is not None:
+        m.budget_monthly_cents = budget_monthly_cents
+    if budget_unlimited is not None:
+        m.budget_unlimited = budget_unlimited
+    mission_store.update(m)
+    return {"status": "updated", **asdict(m)}
+
 @app.post("/missions/{mission_id}/pause")
 async def pause_mission(mission_id: str, reason: str = Query("")):
     """Pause a running mission."""
@@ -196,10 +237,9 @@ async def abort_mission(mission_id: str):
     return {"status": "aborted", "mission_id": mission_id}
 
 
-# ─── Steering Endpoints ───────────────────────────────────────────────────────
+# ─── Steering Endpoints ────────────────────────────────────────────────────────
 
 class SteeringRequest(BaseModel):
-    """Request body for /steer endpoint."""
     inject_tasks: list[str] = []
     directive_override: Optional[str] = None
     pause_reason: Optional[str] = None
@@ -211,11 +251,6 @@ async def steer_mission(mission_id: str, steering: SteeringRequest):
     """
     Inject tasks or override directive while a mission is running.
     Writes to ~/.hermes/caduceus/missions/{id}/steering.json for the daemon to pick up.
-
-    inject_tasks: list of task titles to inject
-    directive_override: temporary directive to apply for this cycle
-    pause_reason: if set, pauses the mission with this reason
-    abort: if true, aborts the mission
     """
     m = mission_store.get(mission_id)
     if not m:
@@ -228,17 +263,14 @@ async def steer_mission(mission_id: str, steering: SteeringRequest):
         "abort": steering.abort,
     }
 
-    # Persist to disk
     mission_store.save_steering(mission_id, steering_data)
 
-    # If abort requested, do it now
     if steering.abort:
         m.status = MissionStatus.FAILED
         mission_store.update(m)
         mission_store.save_progress(mission_id, {"status": "failed", "reason": "abort via steering"})
         return {"status": "steered", "mission_id": mission_id, "action": "aborted"}
 
-    # If pause requested
     if steering.pause_reason:
         m.status = MissionStatus.PAUSED
         mission_store.update(m)
@@ -255,10 +287,7 @@ async def steer_mission(mission_id: str, steering: SteeringRequest):
 
 @app.get("/missions/{mission_id}/flywheel-state")
 async def get_flywheel_state(mission_id: str):
-    """
-    Get the current flywheel state for a mission.
-    Returns phase, iteration count, loop state, and steering overrides.
-    """
+    """Get the current flywheel state for a mission."""
     m = mission_store.get(mission_id)
     if not m:
         raise HTTPException(404, "Mission not found")
@@ -319,14 +348,12 @@ async def qmd_search(
     limit: int = Query(10, ge=1, le=50),
 ):
     """Search the QMD knowledge base."""
-    # Try using the QMD python package if available
     try:
         import caduceus.qmd
         qmd = caduceus.qmd.QMD(str(CADUCEUS_BASE))
         results = qmd.search(query=q, collection=collection, limit=limit)
         return {"query": q, "collection": collection, "results": results}
     except Exception:
-        # Fallback: simple file-based search
         results = []
         col_path = QMD_BASE / collection
         if col_path.exists():
@@ -334,7 +361,6 @@ async def qmd_search(
                 try:
                     content = md_file.read_text().lower()
                     if q.lower() in content:
-                        # Extract snippet around the match
                         idx = content.index(q.lower())
                         snippet = content[max(0, idx-50):idx+150]
                         results.append({
@@ -400,7 +426,6 @@ async def synthesize_skill(task: str = Query(..., description="Task description"
     """Trigger skill synthesis for a task with no matching skill."""
     import uuid
     job_id = str(uuid.uuid4())[:8]
-    # Write synthesis request to a queue
     queue_file = CADUCEUS_BASE / "synthesis-queue" / f"{job_id}.json"
     queue_file.parent.mkdir(parents=True, exist_ok=True)
     queue_file.write_text(json.dumps({
@@ -411,14 +436,13 @@ async def synthesize_skill(task: str = Query(..., description="Task description"
     }))
     return {"job_id": job_id, "status": "pending", "task": task}
 
-# ─── Directives ───────────────────────────────────────────────────────────────
+# ─── Directives ────────────────────────────────────────────────────────────────
 
 @app.get("/directives/{project}", response_model=Directive)
 async def get_directive(project: str):
     """Get the directive for a project (autonomy mode + permissions)."""
     directive_file = PROJECTS_DIR / project / "DIRECTIVE.md"
     if not directive_file.exists():
-        # Return default directive
         return Directive(
             project=project,
             directive="default",
@@ -430,7 +454,6 @@ async def get_directive(project: str):
             requires_restart=["full launches", "new market expansions"],
         )
     content = directive_file.read_text()
-    # Parse DIRECTIVE.md for key fields
     mode = "checkpoint"
     if "autonomy_mode: full_auto" in content or "Mode: Full Auto" in content:
         mode = "full_auto"
@@ -551,8 +574,6 @@ async def hermes_chat(
         text=True,
         timeout=300,
     )
-    # Parse session ID from output
-    import re
     sid_match = re.search(r"Session:\s+(\S+)", result.stdout + result.stderr)
     session = sid_match.group(1) if sid_match else session_id or ""
     return {
@@ -580,7 +601,7 @@ async def list_hermes_sessions():
             pass
     return {"sessions": sessions}
 
-# ─── Dashboard (optional static HTML) ──────────────────────────────────────────
+# ─── Dashboard (optional static HTML) ────────────────────────────────────────
 
 @app.get("/")
 async def dashboard():
@@ -598,6 +619,7 @@ async def dashboard():
       <li><a href="/skills">/skills</a> — list all skills</li>
       <li><a href="/qmd/collections">/qmd/collections</a> — QMD collections</li>
       <li><a href="/checkpoints">/checkpoints</a> — pending checkpoints</li>
+      <li><a href="/inbox">/inbox</a> — inbox items</li>
       <li><a href="/directives/_default">/directives/_default</a> — default directive</li>
     </ul>
     </body></html>
@@ -700,6 +722,8 @@ async def get_mission_credits(mission_id: str):
     budget_status = credits_store.get_budget_status(mission_id, m.budget_monthly_cents)
     return {
         "mission_id": mission_id,
+        "budget_monthly_cents": m.budget_monthly_cents,
+        "budget_unlimited": m.budget_unlimited,
         "usage": usage,
         "budget": budget_status,
     }
@@ -738,13 +762,18 @@ async def record_credits(
 # ── Tasks ──
 
 @app.get("/missions/{mission_id}/tasks", response_model=list)
-async def list_tasks(mission_id: str, status: Optional[str] = None):
+async def list_tasks(mission_id: str, status: Optional[str] = Query(None)):
     if not mission_store.get(mission_id):
         raise HTTPException(404, "Mission not found")
     tasks = mission_store.get_tasks(mission_id)
     if status:
         tasks = [t for t in tasks if t.status.value == status]
     return [asdict(t) for t in tasks]
+
+@app.get("/tasks/all")
+async def list_all_tasks():
+    """Get all tasks across all missions."""
+    return mission_store.get_all_tasks()
 
 @app.post("/missions/{mission_id}/tasks", response_model=dict)
 async def create_task(
@@ -766,7 +795,21 @@ async def create_task(
         status=TaskStatus.BACKLOG,
     )
     mission_store.create_task(mission_id, task)
-    return {"status": "created", "task_id": task.id}
+    return {"status": "created", "task_id": task.id, "title": task.title}
+
+@app.get("/missions/{mission_id}/tasks/{task_id}", response_model=dict)
+async def get_task(mission_id: str, task_id: str):
+    """Get full task detail including chat history."""
+    task = mission_store.get_task(mission_id, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    result = asdict(task)
+    result["chat_history"] = task.chat_history
+    # Also include mission info
+    m = mission_store.get(mission_id)
+    if m:
+        result["mission_name"] = m.name
+    return result
 
 @app.patch("/missions/{mission_id}/tasks/{task_id}", response_model=dict)
 async def update_task(
@@ -775,25 +818,157 @@ async def update_task(
     status: Optional[str] = Query(None),
     title: Optional[str] = Query(None),
     description: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    assignee_skill: Optional[str] = Query(None),
 ):
     if not mission_store.get(mission_id):
         raise HTTPException(404, "Mission not found")
-    tasks = mission_store.get_tasks(mission_id)
-    task = next((t for t in tasks if t.id == task_id), None)
+    task = mission_store.update_task(
+        mission_id,
+        task_id,
+        status=status,
+        title=title,
+        description=description,
+        priority=priority,
+        assignee_skill=assignee_skill,
+    )
     if not task:
         raise HTTPException(404, "Task not found")
-    if status:
-        task.status = TaskStatus(status)
-        if status == "in_progress" and not task.started_at:
-            task.started_at = datetime.now().isoformat()
-        if status in ("completed", "cancelled"):
-            task.completed_at = datetime.now().isoformat()
-    if title:
-        task.title = title
-    if description:
-        task.description = description
-    mission_store.save_task(mission_id, task)
     return {"status": "updated", **asdict(task)}
+
+@app.get("/missions/{mission_id}/tasks/{task_id}/chat")
+async def get_task_chat(mission_id: str, task_id: str):
+    """Get chat history for a task."""
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    task = mission_store.get_task(mission_id, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    return {"chat_history": mission_store.get_chat(mission_id, task_id)}
+
+@app.post("/missions/{mission_id}/tasks/{task_id}/chat")
+async def post_task_chat(
+    mission_id: str,
+    task_id: str,
+    message: str = Query(...),
+):
+    """
+    Send a message to Hermes about a specific task.
+    This is the core 'chat with Hermes about a task' endpoint.
+    
+    1. Reads full task context (task + mission prd.json + integrations)
+    2. Builds a prompt with task description + mission context + chat history
+    3. Calls `hermes chat -q` with the prompt
+    4. Appends both user message and Hermes response to chat history
+    5. Returns Hermes's response
+    """
+    if not mission_store.get(mission_id):
+        raise HTTPException(404, "Mission not found")
+    task = mission_store.get_task(mission_id, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    
+    # Append user message to chat
+    chat_history = mission_store.append_chat(mission_id, task_id, "user", message)
+    
+    # Build Hermes prompt with full task context
+    m = mission_store.get(mission_id)
+    mission_context = ""
+    if m:
+        mission_context = f"""
+MISSION: {m.name}
+{m.description}
+Type: {m.mission_type.value}
+Status: {m.status.value}
+Autonomy Mode: {m.autonomy_mode.value}
+"""
+    
+    # Get integrations context
+    integrations = integration_manager.list(mission_id)
+    int_context = ""
+    if integrations:
+        int_context = "Configured integrations: " + ", ".join(
+            f"{i['provider']}" for i in integrations
+        )
+    
+    # Build chat history string
+    history_str = ""
+    for msg in chat_history[:-1]:  # Exclude the message we just added
+        role = msg.get("role", "user")
+        history_str += f"\n{role.upper()}: {msg.get('content', '')}"
+    
+    # Construct the full prompt for Hermes
+    hermes_prompt = f"""You are Hermes, Caduceus's autonomous agent. A user is working on a task and wants your help.
+
+TASK: {task.title}
+DESCRIPTION: {task.description}
+STATUS: {task.status.value}
+PRIORITY: {task.priority}
+ASSIGNEE SKILL: {task.assignee_skill or 'none'}
+CHECKPOINT REQUIRED: {task.checkpoint_required}
+
+MISSION CONTEXT:
+{mission_context}
+{int_context}
+
+CONVERSATION HISTORY:
+{history_str}
+
+USER: {message}
+
+Important instructions:
+- Help the user complete this task using the available skills and integrations.
+- Update the task status as you make progress (e.g., mark as 'in_progress' when starting, 'in_review' when done, 'completed' when accepted).
+- When you complete a meaningful step, output the new status using: <status>new_status</status>
+- When the entire task is done, output: <promise>COMPLETE</promise>
+- If you need more info, ask clarifying questions.
+- Be concise and actionable in your responses.
+
+Hermes:"""
+
+    # Call Hermes
+    try:
+        result = subprocess.run(
+            ["hermes", "chat", "-q", hermes_prompt, "--max-turns", "3"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        hermes_response = result.stdout if result.stdout else result.stderr
+        if not hermes_response.strip():
+            hermes_response = "(Hermes returned no output)"
+    except subprocess.TimeoutExpired:
+        hermes_response = "(Hermes timed out after 5 minutes)"
+    except FileNotFoundError:
+        hermes_response = "(Hermes CLI not found in PATH)"
+    except Exception as e:
+        hermes_response = f"(Error calling Hermes: {str(e)})"
+    
+    # Append Hermes response to chat
+    final_history = mission_store.append_chat(mission_id, task_id, "hermes", hermes_response)
+    
+    # Check if Hermes indicated the task is complete
+    promise_match = re.search(r'<promise>(COMPLETE|NEXT)</promise>', hermes_response)
+    status_match = re.search(r'<status>(\w+)</status>', hermes_response)
+    
+    # Update task status if Hermes indicated a new status
+    if status_match:
+        new_status = status_match.group(1)
+        try:
+            mission_store.update_task(mission_id, task_id, status=new_status)
+        except Exception:
+            pass  # Ignore invalid status
+    
+    if promise_match and promise_match.group(1) == "COMPLETE":
+        try:
+            mission_store.update_task(mission_id, task_id, status="completed")
+        except Exception:
+            pass
+    
+    return {
+        "response": hermes_response,
+        "chat_history": final_history,
+    }
 
 # ── Onboarding Flow ──
 
@@ -806,7 +981,6 @@ async def onboarding_create_mission(
 ):
     """
     Onboarding: create a new mission from the onboarding flow.
-
     mission_type: "raise_funding" | "start_business" | "scale_business"
     user_idea: None = let Caduceus pick
     """
@@ -830,7 +1004,6 @@ async def onboarding_create_mission(
     )
     mission_store.create(m)
 
-    # If raising funding, set up default tasks
     if mission_type == "raise_funding":
         for i, (title, desc) in enumerate([
             ("Research similar fundraises", "Study comparable companies' pitch decks and round sizes"),
@@ -842,7 +1015,6 @@ async def onboarding_create_mission(
             t = Task(title=title, description=desc, priority="high" if i == 0 else "medium")
             mission_store.create_task(m.id, t)
 
-    # If starting a business, set up the business-building workflow
     if mission_type == "start_business":
         for i, (title, desc, skill) in enumerate([
             ("Discover: what should I build?", "Research forum posts, analyze competitors, find unmet needs", "caduceus-researcher"),

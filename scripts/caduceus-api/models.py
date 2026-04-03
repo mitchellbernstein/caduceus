@@ -18,6 +18,7 @@ Files on disk (local-first, no DB required):
         directive.md         — autonomy mode + permissions
         tasks/               — issue-like task list
           {task-id}.json
+          {task-id}/chat.json — Hermes chat history for this task
         traces/              — ATIF traces from Kairos
         qmd/                — institutional memory for this mission
         heartbeat.json       — last heartbeat timestamp
@@ -118,6 +119,8 @@ class Task:
     checkpoint_required: bool = False   # Human must approve before proceeding
     checkpoint_approved: Optional[bool] = None
     checkpoint_note: Optional[str] = None
+    # Chat history with Hermes about this task (not persisted in task JSON, stored separately)
+    chat_history: list = field(default_factory=list)
 
 
 @dataclass
@@ -306,8 +309,9 @@ class MissionStore:
             return []
         tasks = []
         for f in mission_dir.glob("*.json"):
-            data = _load_json(f)
-            tasks.append(Task(**data))
+            if f.is_file():
+                data = _load_json(f)
+                tasks.append(Task(**data))
         return sorted(tasks, key=lambda t: t.created_at)
 
     def save_task(self, mission_id: str, task: Task):
@@ -317,7 +321,138 @@ class MissionStore:
     def create_task(self, mission_id: str, task: Task) -> Task:
         task.mission_id = mission_id
         self.save_task(mission_id, task)
+        # Initialize empty chat history
+        self._init_chat(mission_id, task.id)
         return task
+
+    def get_task(self, mission_id: str, task_id: str) -> Optional[Task]:
+        """Get a single task by ID."""
+        path = self.base / mission_id / "tasks" / f"{task_id}.json"
+        if not path.exists():
+            return None
+        data = _load_json(path)
+        task = Task(**data)
+        # Attach chat history
+        task.chat_history = self.get_chat(mission_id, task_id)
+        return task
+
+    def update_task(self, mission_id: str, task_id: str, **kwargs) -> Optional[Task]:
+        """Update task fields."""
+        task = self.get_task(mission_id, task_id)
+        if not task:
+            return None
+        for key, value in kwargs.items():
+            if hasattr(task, key) and value is not None:
+                setattr(task, key, value)
+        self.save_task(mission_id, task)
+        return task
+
+    # ── Chat History ──────────────────────────────────────────────────────────
+
+    def _chat_path(self, mission_id: str, task_id: str) -> Path:
+        """Path to a task's chat history file."""
+        return self.base / mission_id / "tasks" / task_id / "chat.json"
+
+    def _init_chat(self, mission_id: str, task_id: str):
+        """Initialize an empty chat history file for a task."""
+        chat_file = self._chat_path(mission_id, task_id)
+        chat_file.parent.mkdir(parents=True, exist_ok=True)
+        if not chat_file.exists():
+            _save_json(chat_file, {"messages": []})
+
+    def get_chat(self, mission_id: str, task_id: str) -> list[dict]:
+        """Read chat history from tasks/{task_id}/chat.json."""
+        chat_file = self._chat_path(mission_id, task_id)
+        if not chat_file.exists():
+            return []
+        data = _load_json(chat_file)
+        return data.get("messages", [])
+
+    def append_chat(self, mission_id: str, task_id: str, role: str, message: str) -> list[dict]:
+        """Append a message to the chat history for a task.
+        
+        Args:
+            mission_id: The mission ID
+            task_id: The task ID
+            role: 'user' or 'hermes'
+            message: The message content
+        
+        Returns:
+            The updated full chat history
+        """
+        chat_file = self._chat_path(mission_id, task_id)
+        self._init_chat(mission_id, task_id)
+        data = _load_json(chat_file)
+        messages = data.get("messages", [])
+        messages.append({
+            "role": role,
+            "content": message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        _save_json(chat_file, {"messages": messages})
+        return messages
+
+    # ── Inbox ──────────────────────────────────────────────────────────────────
+
+    def get_inbox(self, mission_id: str = None) -> dict:
+        """Aggregate inbox items: pending approvals + mission notifications.
+        
+        Args:
+            mission_id: If provided, only show inbox for this mission.
+                       If None, show inbox items across all missions.
+        
+        Returns:
+            dict with 'pending_approvals', 'mentions', 'mission_events'
+        """
+        pending_approvals = []
+        mission_events = []
+        
+        # Load pending checkpoints
+        checkpoints_dir = CADUCEUS_BASE / "checkpoints"
+        if checkpoints_dir.exists():
+            for f in checkpoints_dir.glob("*.json"):
+                try:
+                    data = json.loads(f.read_text())
+                    if data.get("status") == "pending":
+                        # Filter by mission if specified
+                        if mission_id and data.get("project") != mission_id:
+                            continue
+                        pending_approvals.append({
+                            "id": data.get("id", f.stem),
+                            "project": data.get("project", ""),
+                            "mission": data.get("mission", ""),
+                            "decision": data.get("decision", ""),
+                            "options": data.get("options", []),
+                            "created_at": data.get("created_at", ""),
+                            "type": "checkpoint",
+                        })
+                except Exception:
+                    pass
+
+        # Collect mission status change events (from progress.json)
+        missions_to_check = [self.get(mission_id)] if mission_id else self.list()
+        for m in missions_to_check:
+            if not m:
+                continue
+            progress = self.get_progress(m.id)
+            # Check if there's a recent status change we should notify about
+            if progress.get("status") in ("completed", "failed", "paused"):
+                mission_events.append({
+                    "id": f"evt-{m.id}-{progress.get('updated_at', '')}",
+                    "mission_id": m.id,
+                    "mission_name": m.name,
+                    "type": "mission_status",
+                    "status": progress.get("status"),
+                    "message": f"Mission '{m.name}' is now {progress.get('status')}",
+                    "timestamp": progress.get("updated_at", m.updated_at),
+                })
+
+        return {
+            "pending_approvals": pending_approvals,
+            "mentions": [],  # Stubbed for future
+            "mission_events": mission_events,
+            "total": len(pending_approvals) + len(mission_events),
+        }
 
     # ── Flywheel State ──────────────────────────────────────────────────────────
 
@@ -361,3 +496,18 @@ class MissionStore:
         if m:
             m.steering_overrides = steering
             self.update(m)
+
+    # ── All Tasks (cross-mission) ─────────────────────────────────────────────
+
+    def get_all_tasks(self) -> list[dict]:
+        """Get all tasks across all missions, with mission info attached."""
+        all_tasks = []
+        for m in self.list():
+            for t in self.get_tasks(m.id):
+                task_dict = asdict(t)
+                task_dict["mission_name"] = m.name
+                task_dict["mission_id"] = m.id
+                # Attach chat history
+                task_dict["chat_history"] = self.get_chat(m.id, t.id)
+                all_tasks.append(task_dict)
+        return sorted(all_tasks, key=lambda x: x.get("created_at", ""), reverse=True)
