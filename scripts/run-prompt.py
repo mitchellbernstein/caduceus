@@ -86,7 +86,12 @@ if __name__ == '__main__':
         sys.exit(1)
 
     prompt = sys.argv[1]
-    timeout = int(sys.argv[2]) if len(sys.argv) > 2 else 300
+    # Any additional arguments are appended to the prompt
+    if len(sys.argv) > 2:
+        extra = [a for a in sys.argv[2:] if not (a.isdigit() and len(a) < 4)]
+        if extra:
+            prompt = prompt + "\n" + "\n".join(extra)
+    timeout = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 300
 
     try:
         result = run_hermes(prompt, timeout)
