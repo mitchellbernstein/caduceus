@@ -2,8 +2,7 @@
 # =============================================================================
 # Caduceus Installer
 # =============================================================================
-# Usage: curl -fsSL https://caduceus.sh/scripts/install.sh | sh
-#        curl -fsSL https://caduceus.sh/scripts/install.sh | sh -s -- --ui
+# Usage: curl -fsSL https://raw.githubusercontent.com/mitchellbernstein/caduceus/main/scripts/install.sh | sh
 # This script installs Caduceus — a Hermes-native agent orchestration
 # framework — into ~/.hermes/
 #
@@ -16,11 +15,17 @@
 #   ~/.hermes/caduceus-ui/      — Next.js app + FastAPI proxy
 # =============================================================================
 
-set -euo pipefail
+# Detect the source directory (where this script lives)
+# Use ${BASH_SOURCE[0]-} syntax — empty string if unbound (works under set -u)
+_bs="${BASH_SOURCE[0]-}"
+if [[ -n "$_bs" ]] && [[ -d "$(dirname "$_bs")" ]]; then
+    SOURCE_DIR="$(cd "$(dirname "$_bs")" && pwd)"
+else
+    SOURCE_DIR="$(pwd)"
+fi
+unset _bs
 
-# =============================================================================
-# Constants
-# =============================================================================
+set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 CADUCEUS_SKILLS_DIR="$HERMES_HOME/skills"
@@ -48,7 +53,12 @@ error()   { echo -e "${RED}[error]${RESET} $1" >&2; }
 section() { echo ""; echo -e "${BOLD}${1}${RESET}"; echo "========================================"; }
 
 # Detect the source directory (where this script lives)
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${BASH_SOURCE[0]:-}"
+if [[ -n "$SOURCE_DIR" ]] && [[ -d "$(dirname "$SOURCE_DIR")" ]]; then
+    SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SOURCE_DIR="$(pwd)"
+fi
 
 # =============================================================================
 # Parse flags
@@ -141,9 +151,14 @@ install_skills() {
     if [[ -d "$SOURCE_DIR/../skills" ]] && [[ -d "$SOURCE_DIR/../skills/caduceus-orchestrator" ]]; then
         # Local dev
         SKILLS_SOURCE="$SOURCE_DIR/../skills"
-        CADUCEUS_PYTHON_SOURCE="$SOURCE_DIR/../caduceus"
-        CLONE_SOURCE="$SOURCE_DIR/.."
         info "Installing from local dev: $SKILLS_SOURCE"
+        CLONE_SOURCE="$SOURCE_DIR/.."
+        # Python package is at ../caduceus/ (next to scripts/)
+        if [[ -d "$SOURCE_DIR/../caduceus" ]]; then
+            CADUCEUS_PYTHON_SOURCE="$SOURCE_DIR/../caduceus"
+        fi
+        # Don't clean up local dev repos
+        CLONE_SOURCE=""
 
     elif [[ -d "$HERMES_HOME/caduceus/source/skills" ]]; then
         # Previous remote install left a clone
@@ -291,18 +306,57 @@ print('Database initialized at $CADUCEUS_DB')
 install_python_package() {
     section "Installing Python package"
 
-    # CADUCEUS_PYTHON should already be set from install_skills
+    # CADUCEUS_PYTHON_SOURCE is set by install_skills
     if [[ -z "${CADUCEUS_PYTHON_SOURCE:-}" ]]; then
         warn "Python package source not found — skipping"
+        return
+    fi
+
+    if [[ ! -d "$CADUCEUS_PYTHON_SOURCE" ]]; then
+        warn "Python package directory not found at $CADUCEUS_PYTHON_SOURCE — skipping"
         return
     fi
 
     CADUCEUS_PKG_DIR="$HERMES_HOME/caduceus/python"
     mkdir -p "$CADUCEUS_PKG_DIR"
 
-    if [[ -d "$CADUCEUS_PYTHON_SOURCE" ]]; then
+    # Copy the entire caduceus/ package directory into CADUCEUS_PKG_DIR/
+    # so it ends up as CADUCEUS_PKG_DIR/caduceus/ (the nested structure Python expects)
+    local src_parent="$(dirname "$CADUCEUS_PYTHON_SOURCE")"
+    local pkg_name="$(basename "$CADUCEUS_PYTHON_SOURCE")"
+    if ! cp -r "$src_parent/$pkg_name" "$CADUCEUS_PKG_DIR/"; then
+        # Fallback: copy contents directly if above fails
         cp -r "$CADUCEUS_PYTHON_SOURCE"/* "$CADUCEUS_PKG_DIR/" 2>/dev/null || true
+    fi
+
+    # Add to PYTHONPATH so `import caduceus` works from any context
+    # Also write to shell rc so it persists across sessions
+    info "Setting up PYTHONPATH for caduceus..."
+    PYTHONPATH_EXPORT="$CADUCEUS_PKG_DIR"
+    SHELL_RC=""
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+        if [[ -f "$rc" ]]; then
+            SHELL_RC="$rc"
+            break
+        fi
+    done
+
+    if [[ -n "$SHELL_RC" ]]; then
+        if ! grep -q "CADUCEUS_PYTHON.*caduceus/python" "$SHELL_RC" 2>/dev/null; then
+            echo "" >> "$SHELL_RC"
+            echo "# Caduceus Python package" >> "$SHELL_RC"
+            echo "export PYTHONPATH=\"$PYTHONPATH_EXPORT:\$PYTHONPATH\"" >> "$SHELL_RC"
+            info "Added PYTHONPATH to $SHELL_RC"
+        fi
+        export PYTHONPATH="$PYTHONPATH_EXPORT:$PYTHONPATH"
+    fi
+
+    # Verify it works
+    if python3 -c "import caduceus; from caduceus.orchestrator import MissionExecutor; print('OK')" 2>/dev/null; then
+        success "Python package ready: import caduceus"
+    else
         success "Python package installed to $CADUCEUS_PKG_DIR"
+        info "For current shell, run: export PYTHONPATH=\"$PYTHONPATH_EXPORT:\$PYTHONPATH\""
     fi
 }
 
@@ -416,6 +470,42 @@ done_message() {
 # Main
 # =============================================================================
 
+register_agents() {
+    section "Registering built-in agents"
+
+    local python_path=""
+    if [[ -n "${CADUCEUS_PYTHON_SOURCE:-}" ]]; then
+        python_path="$(dirname "$CADUCEUS_PYTHON_SOURCE")"
+    elif [[ -d "$HERMES_HOME/caduceus/python" ]]; then
+        python_path="$HERMES_HOME/caduceus/python"
+    fi
+
+    if [[ -z "$python_path" ]]; then
+        warn "Could not find python package path — skipping agent seeding"
+        return
+    fi
+
+    info "Seeding 7 built-in Theoi agents..."
+    local seeded_count
+    seeded_count=$(PYTHONPATH="$python_path" python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, '$python_path')
+from caduceus import init_db, seed_agents
+import os
+os.environ['CADUCEUS_DB_PATH'] = os.path.expanduser('$CADUCEUS_DB')
+init_db()
+seeded = seed_agents()
+print(len(seeded))
+" 2>&1) || true
+
+    if [[ -n "$seeded_count" ]] && [[ "$seeded_count" != "0" ]]; then
+        success "Registered $seeded_count agents: orchestrator, engineer, researcher, writer, themis, kairos, monitor"
+    else
+        info "Agents already seeded (or DB not ready yet)"
+    fi
+}
+
 main() {
     echo ""
     echo "========================================"
@@ -425,8 +515,9 @@ main() {
     check_prereqs
     install_skills
     install_qmd
-    install_db
     install_python_package
+    install_db
+    register_agents
     cleanup_clone
     register_skills
 

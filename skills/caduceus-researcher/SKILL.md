@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-researcher
 description: The researcher sub-agent — deep research, competitive analysis, paper review. Searches broadly, synthesizes findings, writes reports to QMD.
 version: 0.1.0
@@ -9,7 +10,17 @@ metadata:
   hermes:
     tags: [research, analysis, competitive-intelligence, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-engineer, caduceus-writer]
+triggers:
+  - "research"
+  - "investigate"
+  - "analyze (the|a|this)?"
+  - "competitive (analysis|landscape)"
+  - "deep dive"
+  - "look into"
+  - "find out"
+  - "paper review"
 ---
+
 
 # Caduceus Researcher — The Analyst
 

@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-themis
 description: The themis sub-agent — GSD-style project onboarding. Runs a structured interview to bootstrap a new project with SPEC.md, context.md, and initial tasks.
 version: 0.1.0
@@ -9,7 +10,16 @@ metadata:
   hermes:
     tags: [onboarding, project-setup, gsd, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-engineer, caduceus-researcher]
+triggers:
+  - "bootstrap"
+  - "onboard(ing)? (a |the )?project"
+  - "new project"
+  - "get started"
+  - "set up (a |the )?project"
+  - "initialize (a |the )?project"
+  - "start (a |the )?project"
 ---
+
 
 # Caduceus Themis — The Onboarder
 

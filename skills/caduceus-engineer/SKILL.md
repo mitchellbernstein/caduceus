@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-engineer
 description: The engineer sub-agent — builds features, fixes bugs, writes tests, opens PRs. Reads SPEC.md from QMD, implements, writes progress to coordination log.
 version: 0.1.0
@@ -9,7 +10,18 @@ metadata:
   hermes:
     tags: [engineering, coding, build, caduceus, theoi]
     related_skills: [caduceus-orchestrator, caduceus-researcher, caduceus-writer]
+triggers:
+  - "build"
+  - "implement"
+  - "write code"
+  - "fix (the|a|this)? bug"
+  - "refactor"
+  - "add (a |the )?feature"
+  - "open (a )?pr"
+  - "write tests"
+  - "engineer"
 ---
+
 
 # Caduceus Engineer — The Builder
 

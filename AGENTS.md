@@ -1,94 +1,44 @@
-# AGENTS.md — Caduceus Private (Development)
+# AGENTS.md — Caduceus (Public/GA)
 
 ## What This Is
-Internal development/testing ground for Caduceus. All new skills, features, and experiments land here first.
+Public GA release repo for Caduceus. This is what end users install.
+
+**This repo is fully self-contained.** It never references `caduceus_private`. Everything a user needs is here.
 
 ## Repo Structure
 ```
-caduceus_private/
-├── skills/              # All Caduceus Hermes skills
-│   ├── caduceus-orchestrator/
-│   ├── caduceus-engineer/
-│   ├── caduceus-researcher/
-│   ├── caduceus-writer/
-│   ├── caduceus-monitor/
-│   ├── caduceus-themis/
-│   └── caduceus-kairos/
-├── caduceus/            # Python package (queries, utils)
-│   └── db/
-├── qmd-collections/    # Shared coordination layer
+caduceus/
+├── skills/              # GA Caduceus skills
+├── caduceus/           # Python package (db, utils)
+├── qmd-collections/    # Starter QMD templates
+├── docs/               # GitHub Pages documentation
+├── css/, js/           # Site assets
+├── index.html          # Landing page
+├── pricing.html         # Pricing page
+├── get.html            # Install redirect
 ├── scripts/
-│   └── install.sh      # Dev installer (local run only)
-└── README.md
+│   └── install.sh      # GA installer (curl | sh)
+└── AGENTS.md           # This file
 ```
 
-## Two-Repo Strategy
-
-| Repo | Role | Access |
-|------|------|--------|
-| `caduceus_private` | Dev, test, iterate | Private |
-| `caduceus` (public) | GA releases only | Public |
-
-**The public repo MUST be fully self-contained.** Its install script, skills, and assets live entirely in the public repo. It never references or depends on `caduceus_private`.
-
-## Promotion Workflow (Private → Public)
-
-When something in private is GA-ready, manually promote it:
-
-### Step 1: Verify in Private
+## Install
 ```bash
-cd ~/Documents/GitHub/caduceus_private
-# ... build, test, iterate ...
+# Option 1: curl | sh
+curl -fsSL https://raw.githubusercontent.com/studio-yeehaw/caduceus/main/scripts/install.sh | sh
+
+# Option 2: clone and run
+git clone https://github.com/studio-yeehaw/caduceus
+cd caduceus && ./scripts/install.sh
 ```
 
-### Step 2: Copy GA-Ready Files to Public
-Manually copy only the stable files from private to public:
+## Relationship to Private
+`caduceus_private` is the development ground. When features are GA-ready, they are copied here. See `caduceus_private/AGENTS.md` for the promotion workflow.
 
-```bash
-# Skills that are GA
-cp -r skills/caduceus-orchestrator/ ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-engineer/      ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-researcher/    ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-writer/        ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-monitor/       ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-themis/        ~/Documents/GitHub/caduceus/skills/
-cp -r skills/caduceus-kairos/        ~/Documents/GitHub/caduceus/skills/
+## How It Works
+1. Installer copies skills to `~/.hermes/skills/`
+2. Installer sets up QMD collections at `~/.hermes/caduceus/`
+3. Installer initializes SQLite DB at `~/.hermes/caduceus.db`
+4. Skills are auto-discovered by Hermes on next start
 
-# QMD starter templates
-cp -r qmd-collections/agenda/ ~/Documents/GitHub/caduceus/
-
-# Python package (if GA)
-cp -r caduceus/db/            ~/Documents/GitHub/caduceus/caduceus/db/
-
-# GitHub Pages site lives in public only — never copy site files from private
-```
-
-### Step 3: Push Public
-```bash
-cd ~/Documents/GitHub/caduceus
-git add -A
-git commit -m "Release v0.X.Y"
-git push origin main
-```
-
-## What Stays in Private Only
-- Experimental skills not yet GA
-- `scripts/install.sh` (private dev installer — not for end users)
-- Any test/mock skills or debugging tools
-- The `caduceus_private/` Python package internals (queries.py, threat_scan.py, etc. — these are implementation details, not public API)
-
-## What Lives in Public Only
-- `index.html`, `pricing.html`, `get.html` (GitHub Pages site)
-- `docs/` (documentation)
-- `css/styles.css`, `js/main.js`
-- `scripts/install.sh` (GA installer — different from private's)
-- All skills (GA versions only)
-- `qmd-collections/` (starter templates only)
-
-## GitHub Pages Deployment
-The public `caduceus/` repo is deployed to GitHub Pages. Push to `main` and Pages auto-deploys.
-
-## Version Policy
-- Private: no version constraints (dev)
-- Public: follows semver, tagged releases
-- Version is defined in `scripts/install.sh` as `CADUCEUS_VERSION`
+## GitHub Pages
+The `docs/` folder + root HTML files are served at `get.caduceus.sh`. Push to `main` to deploy.

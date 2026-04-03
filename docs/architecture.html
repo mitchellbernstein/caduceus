@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture — Caduceus</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9B%8F</text></svg>">
+    <style>
+        .docs-layout { display: flex; max-width: 1100px; margin: 0 auto; padding: 48px 24px; gap: 48px; }
+        .docs-sidebar { width: 200px; flex-shrink: 0; }
+        .docs-content { flex: 1; max-width: 680px; }
+        .docs-nav-title { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+        .docs-nav { display: flex; flex-direction: column; gap: 4px; }
+        .docs-nav a { font-size: 14px; color: var(--text-muted); padding: 4px 0; }
+        .docs-nav a:hover, .docs-nav a.active { color: var(--text); }
+        .docs-content h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
+        .docs-content h2 { font-size: 20px; font-weight: 600; margin-top: 48px; margin-bottom: 16px; }
+        .docs-content h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 10px; }
+        .docs-content p { font-size: 15px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+        .docs-content ul { margin-bottom: 16px; padding-left: 20px; }
+        .docs-content li { font-size: 15px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.6; }
+        .docs-content code { font-family: var(--font-mono); font-size: 13px; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
+        .docs-content pre { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; overflow-x: auto; }
+        .docs-content pre code { background: none; padding: 0; font-size: 13px; line-height: 1.7; }
+        .docs-divider { height: 1px; background: var(--border); margin: 48px 0; }
+        .arch-layer { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; }
+        .arch-layer h3 { margin-top: 0; margin-bottom: 8px; font-size: 15px; }
+        .arch-layer p { margin-bottom: 0; }
+        .arch-path { font-family: var(--font-mono); font-size: 12px; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
+        .path-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+        .path-item { background: var(--bg-terminal); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--text-muted); }
+        .path-item code { font-size: 11px; display: block; margin-bottom: 4px; }
+        @media (max-width: 768px) { .docs-layout { flex-direction: column; } .docs-sidebar { width: 100%; } .path-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <p class="docs-nav-title">Documentation</p>
+            <nav class="docs-nav">
+                <a href="/docs/getting-started">Getting Started</a>
+                <a href="/docs/skills">Skills</a>
+                <a href="/docs/architecture" class="active">Architecture</a>
+                <a href="/docs/faq">FAQ</a>
+            </nav>
+        </aside>
+
+        <div class="docs-content">
+            <h1>Architecture</h1>
+            <p>Caduceus runs inside Hermes. There's no separate server, no background process, no daemon. The orchestrator skill is just a Hermes skill that uses Hermes tools.</p>
+
+            <div class="docs-divider"></div>
+
+            <h2>Layers</h2>
+
+            <div class="arch-layer">
+                <h3>You — the user</h3>
+                <p>Talk to Hermes. Tell the orchestrator what you need. Get results back. No new interface to learn.</p>
+            </div>
+
+            <div class="arch-layer">
+                <h3>Caduceus Orchestrator (Hermes skill)</h3>
+                <p>The foreman. Spawns agents, tracks tasks, manages retries and approvals. Uses Hermes tools (<code>delegate_task</code>, <code>terminal</code>, <code>read_file</code>, <code>write_file</code>).</p>
+            </div>
+
+            <div class="arch-layer">
+                <h3>Theoi Agents (Hermes skills)</h3>
+                <p>Engineer, Researcher, Writer, Monitor. Each does one thing well. Read SPEC.md, write outputs to QMD, update the coordination log.</p>
+            </div>
+
+            <div class="arch-layer">
+                <h3>SQLite <span class="arch-path">~/.hermes/caduceus.db</span></h3>
+                <p>Task state: pending, running, completed, failed. Who is working on what. Execution history. Trigger definitions. Approval queue.</p>
+            </div>
+
+            <div class="arch-layer">
+                <h3>QMD Collections <span class="arch-path">~/.hermes/caduceus/</span></h3>
+                <p>Shared knowledge: SPECs, research reports, coordination log, learnings. Agents read and write here. Human-editable. Semantic searchable.</p>
+            </div>
+
+            <div class="docs-divider"></div>
+
+            <h2>File layout</h2>
+
+            <pre><code>~/.hermes/
+├── skills/                          # Caduceus skills
+│   ├── caduceus-orchestrator/      # The foreman
+│   ├── caduceus-engineer/          # Builder
+│   ├── caduceus-researcher/        # Analyst
+│   ├── caduceus-writer/            # Copywriter
+│   ├── caduceus-monitor/           # Watcher
+│   ├── caduceus-themis/            # Onboarder
+│   └── caduceus-kairos/            # Experimenter
+├── caduceus/                        # QMD collections
+│   ├── agora/                      # Cross-project memory
+│   │   ├── coordination/           # task-log.md, blockers.md
+│   │   ├── learnings/              # what-worked.md, what-failed.md
+│   │   └── decisions/             # Decision records
+│   ├── projects/                   # Per-project specs + artifacts
+│   └── agents/                    # Per-agent context + state
+└── caduceus.db                     # SQLite: tasks, agents, executions,
+                                    #           triggers, approvals</code></pre>
+
+            <div class="docs-divider"></div>
+
+            <h2>Why SQLite + QMD?</h2>
+
+            <p><strong>SQLite</strong> for operational state — who is doing what, right now. ACID guarantees, concurrent write safety, fast lookups by ID.</p>
+
+            <p><strong>QMD</strong> for knowledge and context — why, what we've learned, what's the bigger picture. Semantic search, human-readable, agent-editable.</p>
+
+            <p>They don't overlap. SQLite is the orchestrator's domain (task state). QMD is the agents' domain (shared memory).</p>
+
+            <div class="docs-divider"></div>
+
+            <h2>Coordination protocol</h2>
+
+            <p>Agents don't send messages to each other. They write to the QMD coordination log:</p>
+
+            <pre><code>## 2026-03-19
+
+- [orchestrator] Received task: build-landing-page (id: task-abc123)
+- [engineer] Started: build landing page
+- [engineer] Completed: build landing page → Output: projects/ugc/landing.md
+- [writer] Started: write landing page copy (depends on: engineer)</code></pre>
+
+            <p>The orchestrator reads this to know what's done, what's running, what's blocked. No direct messaging. No message bus. Just a shared log in QMD.</p>
+
+            <div class="docs-divider"></div>
+
+            <h2>Threat model</h2>
+
+            <p>Caduceus runs inside Hermes, which means agents can run arbitrary code. Defense in depth:</p>
+
+            <ul>
+                <li><strong>Threat scanning</strong> — All prompts scanned for injection patterns before agents run. Invisible unicode, prompt injection, exfiltration, dangerous shell commands.</li>
+                <li><strong>Draft-and-flag</strong> — Agents must propose irreversible actions (delete, drop, auth changes). Human approval required before execution.</li>
+                <li><strong>Bounded retries</strong> — Tasks retry up to N times (default: 3) before being marked failed. No infinite loops.</li>
+                <li><strong>Depth limit</strong> — Sub-agent spawning is depth-limited. Agents can't spawn agents that spawn agents indefinitely.</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/docs">Docs</a>
+            <a href="/docs/getting-started">Getting Started</a>
+            <a href="/docs/skills">Skills</a>
+            <a href="/docs/architecture">Architecture</a>
+            <a href="/pricing">Pricing</a>
+        </div>
+        <p class="footer-copy">Caduceus &copy; 2026 Studio Yeehaw LLC</p>
+    </footer>
+</body>
+</html>

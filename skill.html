@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal — Caduceus</title>
+    <meta name="description" content="Install Caduceus for Hermes. One command, five minutes, no server.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9B%8F</text></svg>">
+</head>
+<body>
+    <main>
+        <!-- Hero -->
+        <section class="hero">
+            <p class="hero-count" id="install-count">Terminal</p>
+            <h1 class="hero-title">Hermes-native<br>agent orchestration</h1>
+            <p class="hero-sub">Spawn teams of specialized agents that coordinate via shared memory.<br>Engineers, researchers, writers — working together, without you in the loop.</p>
+
+            <!-- Install command -->
+            <div class="install-box">
+                <div class="install-cmd">
+                    <code id="install-command">curl -fsSL https://caduceus.sh/scripts/install.sh | sh</code>
+                    <button class="copy-btn" onclick="copyInstall()" title="Copy install command">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="install-note" style="margin-bottom: 32px;">Requires <a href="https://github.com/NousResearch/hermes-agent" target="_blank">Hermes Agent</a> (macOS or Linux)</p>
+            </div>
+
+            <!-- Terminal demo -->
+            <div class="terminal">
+                <div class="terminal-header">
+                    <span class="terminal-dot"></span>
+                    <span class="terminal-dot"></span>
+                    <span class="terminal-dot"></span>
+                    <span class="terminal-title">hermes</span>
+                </div>
+                <pre class="terminal-body"><span class="prompt">$</span> /skills caduceus-orchestrator
+<span class="dim">Loaded: caduceus-orchestrator</span>
+
+<span class="prompt">$</span> bootstrap a new project with Themis
+
+<span class="accent">[Themis]</span> Starting onboarding interview...
+<span class="accent">[Themis]</span> Q1: What are you building?
+
+<span class="prompt">$</span> A UGC workflow platform for restaurants in Austin
+
+<span class="accent">[Themis]</span> Q2: What does success look like?
+
+<span class="dim">...</span>
+<span class="dim">[Themis] Spec created: projects/ugc-workflow/SPEC.md</span>
+<span class="dim">[Themis] 5 tasks created in SQLite</span>
+<span class="dim">[orchestrator] Ready. 3 agents available.</span>
+
+<span class="prompt">$</span> run the engineer on build-landing-page
+
+<span class="accent">[orchestrator]</span> Spawning engineer agent...
+<span class="accent">[engineer]</span> Reading SPEC.md...
+<span class="accent">[engineer]</span> Building landing page...
+<span class="accent">[engineer]</span> Done. → Output: projects/ugc-workflow/landing.md</pre>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="section">
+            <h2 class="section-title">How it works</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <span class="card-num">01</span>
+                    <h3>Install</h3>
+                    <p>One command installs the orchestrator and all agent skills into your existing Hermes setup. No new server. No fork.</p>
+                    <code class="inline-code">curl -fsSL https://caduceus.sh | sh</code>
+                </div>
+                <div class="card">
+                    <span class="card-num">02</span>
+                    <h3>Onboard</h3>
+                    <p>Themis runs a structured interview to bootstrap your project. SPEC.md, context, and initial tasks — all in QMD.</p>
+                    <code class="inline-code">"bootstrap a new project"</code>
+                </div>
+                <div class="card">
+                    <span class="card-num">03</span>
+                    <h3>Orchestrate</h3>
+                    <p>Tell the orchestrator what you need. It spawns agents, tracks tasks, retries failures, and reports back.</p>
+                    <code class="inline-code">"run the researcher on X"</code>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="section" id="features">
+            <h2 class="section-title">Built for Hermes</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path>
+                        </svg>
+                    </div>
+                    <h3>Shared memory</h3>
+                    <p>QMD collections for institutional knowledge. Agents read and write to a shared brain — no direct messaging needed.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3>Agent swarms</h3>
+                    <p>Specialized roles: Engineer, Researcher, Writer, Monitor. Each is a focused skill that does one thing well.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <h3>Human approval</h3>
+                    <p>Draft-and-flag for irreversible actions. Agents propose; you approve. No deletions, drops, or auth changes without your say.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Cron + webhooks</h3>
+                    <p>Schedule recurring tasks with natural language. "Every morning at 9am." Hooks into GitHub, Stripe, or any webhook.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                    </div>
+                    <h3>Agora learnings</h3>
+                    <p>Cross-project memory of what worked and what failed. Don't repeat mistakes. Build institutional knowledge over time.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
+                    <h3>Bounded loops</h3>
+                    <p>Kairos runs autonomous experiments with hard iteration caps. Find answers without infinite loops.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Skills -->
+        <section class="section">
+            <h2 class="section-title">The agent skills</h2>
+            <div class="skills-list">
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-orchestrator</code>
+                        <span class="skill-badge">core</span>
+                    </div>
+                    <p>The foreman. Receives work, spawns agents, tracks tasks, manages retries.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-engineer</code>
+                        <span class="skill-badge">builder</span>
+                    </div>
+                    <p>Builds features, fixes bugs, writes tests, opens PRs. Draft-and-flag for destructive changes.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-researcher</code>
+                        <span class="skill-badge">analyst</span>
+                    </div>
+                    <p>Deep research, competitive analysis, paper review. Synthesizes findings into QMD reports.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-writer</code>
+                        <span class="skill-badge">copy</span>
+                    </div>
+                    <p>Landing pages, documentation, emails, reports. Markdown-first, Notion and Resend optional.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-monitor</code>
+                        <span class="skill-badge">watcher</span>
+                    </div>
+                    <p>Heartbeat checks every 30 minutes. Alerts on stalled tasks, failed jobs, pending approvals.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-themis</code>
+                        <span class="skill-badge">onboard</span>
+                    </div>
+                    <p>GSD-style project onboarding. 6 questions, then SPEC.md, context, and initial tasks.</p>
+                </div>
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <code class="skill-name">caduceus-kairos</code>
+                        <span class="skill-badge">experiment</span>
+                    </div>
+                    <p>Bounded autonomous research loops. Hypothesis → experiment → metric → decide → learn.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="section faq-section">
+            <h2 class="section-title">FAQ</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>What is Caduceus?</h3>
+                    <p>Caduceus is a framework for orchestrating teams of specialized AI agents inside Hermes. It gives you foreman agents (orchestrator), builder agents (engineer), researcher agents, and writer agents — all coordinating through shared memory (QMD) and a SQLite task database. You delegate work; Caduceus handles delegation, retries, and reporting.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How does it work?</h3>
+                    <p>Caduceus installs as a set of Hermes skills. You load the orchestrator skill, describe what you need in plain language, and the orchestrator spawns sub-agents to do the work. Agents read from and write to a shared QMD collection, so they coordinate without needing to message each other directly.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Is it free?</h3>
+                    <p>Yes. The Terminal version is completely free and open source under MIT. It runs entirely on your machine, inside your Hermes setup. No account, no server, no subscriptions.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What AI models does it use?</h3>
+                    <p>Caduceus runs inside Hermes, so it uses whatever models you have configured in Hermes (Anthropic, OpenAI, Groq, or any provider Hermes supports). Each agent can use a different model — the orchestrator decides which model fits which task.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How is this different from just using Hermes?</h3>
+                    <p>Hermes gives you one agent. Caduceus gives you a team. The orchestrator pattern means you describe a multi-step project once, and agents work on it autonomously — reading specs, assigning tasks, executing, and reporting — without you running each step manually.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Do agents have access to my files?</h3>
+                    <p>Agents operate within the permissions Hermes grants them. Caduceus includes draft-and-flag for destructive actions — agents propose deletions, drops, or auth changes, but don't execute them until you approve. Threat scanning runs on all agent prompts to catch injection attacks.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What is QMD?</h3>
+                    <p>QMD (Query Markup Documents) is the shared memory layer. It's a local search engine for personal knowledge bases — combining BM25 + vector semantic search. Caduceus agents read from and write to QMD collections so institutional knowledge persists across sessions and transfers between agents.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What's Themis?</h3>
+                    <p>Themis is Caduceus's onboarding agent. It runs a 6-question interview to bootstrap a new project — capturing what you're building, success criteria, context, and initial tasks. It outputs a SPEC.md, context files, and structured tasks in SQLite.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/docs">Docs</a>
+            <a href="/docs/skills">Skills</a>
+            <a href="/pricing">Pricing</a>
+        </div>
+        <p class="footer-copy">Caduceus &copy; 2026 Studio Yeehaw LLC</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

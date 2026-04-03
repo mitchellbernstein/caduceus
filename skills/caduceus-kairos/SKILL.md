@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-kairos
 description: The kairos sub-agent — bounded autonomous experimentation loops with TDD-style verification, dependency tracking, and promise-based signaling. Defines hypotheses, runs iterations, tracks metrics, decides when to stop.
 version: 0.2.0
@@ -20,6 +21,7 @@ triggers:
   - "test (a |the )?idea"
   - "kairos"
 ---
+
 
 # Caduceus Kairos — The Experimenter
 

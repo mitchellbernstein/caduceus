@@ -1,4 +1,5 @@
 ---
+
 name: caduceus-orchestrator
 description: The foreman skill — orchestrates Caduceus agent swarms. Creates tasks, spawns specialized sub-agents, monitors progress, manages retries and approvals. This is the brain of Caduceus.
 version: 0.1.0
@@ -12,7 +13,19 @@ metadata:
   hermes:
     tags: [orchestration, swarm, multi-agent, caduceus]
     related_skills: [caduceus-engineer, caduceus-researcher, caduceus-writer, caduceus-monitor, caduceus-themis, caduceus-kairos]
+triggers:
+  - "run the (orchestrator|engineer|researcher|writer|monitor|themis|kairos)"
+  - "orchestrate"
+  - "delegate to"
+  - "manage (agents|tasks|team)"
+  - "check on (tasks|agents|progress)"
+  - "task status"
+  - "what's running"
+  - "set up a cron"
+  - "schedule (a )?task"
+  - "/caduceus"
 ---
+
 
 # Caduceus Orchestrator — The Foreman
 
