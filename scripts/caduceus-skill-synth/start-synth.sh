@@ -133,12 +133,22 @@ runner.sh template:
 ```bash
 #!/bin/bash
 set -euo pipefail
+SCRIPT_DIR="\$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+CADUCEUS_PRIVATE="\$(cd "\$SCRIPT_DIR/../../.." && pwd)"
 echo "=== __SKILL_NAME__ ==="
 TASK="\$1"
-# Run the skill via claude -p with the reference prompt
-result=\$(python3 $CADUCEUS_PRIVATE/scripts/run-prompt.py "@__SKILL_PATH__/references/__SLUG__-prompt.md" "TASK: \$TASK")
-echo "\$result"
-# Promise: <promise>COMPLETE</promise> when done
+
+# Build prompt from reference file
+PROMPT="Task: \$TASK\n\n\$(cat "\$CADUCEUS_PRIVATE/skills/__SKILL_NAME__/references/__SLUG__-prompt.md")"
+
+# Write to temp file and run via hermes directly
+PROMPT_FILE=\$(mktemp /tmp/caduceus-skill.XXXXXX)
+echo "\$PROMPT" > "\$PROMPT_FILE"
+hermes chat -q "\$(cat "\$PROMPT_FILE")" --max-turns 5 --yolo 2>&1
+rm -f "\$PROMPT_FILE"
+
+echo ""
+echo "<promise>COMPLETE</promise>"
 ```
 
 reference prompt template:
